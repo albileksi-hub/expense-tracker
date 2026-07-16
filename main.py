@@ -107,11 +107,12 @@ def add_expense(expenses: list[Expense], budgets: dict[str, float]) -> None:
 
     limit = budgets.get(expense.category)
     if limit is not None:
-        spent = group_by_category(expenses)[expense.category]
+        month = expense.date[:7]
+        spent = group_by_category(filter_by_month(expenses, month))[expense.category]
         if spent > limit:
             console.print(
-                f"[bold red]Warning: {expense.category} is now ${spent:.2f}, "
-                f"over its ${limit:.2f} budget![/bold red]")
+                f"[bold red]Warning: {expense.category} is at ${spent:.2f} for {month}, "
+                f"over its ${limit:.2f} monthly budget![/bold red]")
     console.print()
 
 
@@ -226,8 +227,11 @@ def manage_budgets(expenses: list[Expense], budgets: dict[str, float]) -> None:
             console.print("[yellow]No budgets set yet.[/yellow]\n")
             return
 
-        spent = group_by_category(expenses)
-        table = Table(show_header=True, header_style="bold magenta")
+        current_month = datetime.now().strftime("%Y-%m")
+        spent = group_by_category(filter_by_month(expenses, current_month))
+        table = Table(
+            title=f"Budget status for {current_month}",
+            show_header=True, header_style="bold magenta")
         table.add_column("Category")
         table.add_column("Spent", justify="right")
         table.add_column("Budget", justify="right")
