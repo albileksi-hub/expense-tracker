@@ -14,11 +14,14 @@ def test_expense_round_trips_through_dict():
     e = Expense(9.5, "transport", "2026-07-01", "bus")
     rebuilt = Expense.from_dict(e.to_dict())
 
-    assert rebuilt.id == e.id
-    assert rebuilt.amount == e.amount
-    assert rebuilt.category == e.category
-    assert rebuilt.date == e.date
-    assert rebuilt.note == e.note
+    assert rebuilt == e
+
+
+def test_from_dict_fills_in_defaults():
+    e = Expense.from_dict({"amount": 5.0, "category": "food", "date": "2026-01-01"})
+
+    assert e.note == ""
+    assert e.id  # an id gets generated when the stored data has none
 
 
 def test_filter_by_month():
@@ -31,6 +34,7 @@ def test_filter_by_month():
 
 def test_total_amount():
     assert total_amount(make_expenses()) == 262.0
+    assert total_amount([]) == 0
 
 
 def test_group_by_category():

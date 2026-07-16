@@ -1,67 +1,80 @@
-import csv
+"""Interactive expense tracker for the terminal, built on rich."""
+
+import json
+from datetime import datetime
 
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
+from rich.table import Table
 
 from expense import Expense
-from storage import save_expenses, load_expenses, save_budgets, load_budgets
-from reports import filter_by_month, total_amount, group_by_category, over_budget_categories
+from reports import filter_by_month, group_by_category, total_amount
+from storage import (
+    export_csv,
+    load_budgets,
+    load_expenses,
+    save_budgets,
+    save_expenses,
+)
 
 console = Console()
 
-CSV_FILE = "expenses.csv"
+
+# ---------- input helpers ----------
+
+def ask(label: str) -> str:
+    """Prompt for one line of input, styled consistently."""
+    return console.input(f"[cyan]{label}[/cyan]").strip()
 
 
-def read_amount(prompt="[cyan]Amount: $[/cyan]"):
-    """Keep asking until the user types a valid positive number."""
+def read_amount(label: str = "Amount: $") -> float:
+    """Prompt until the user types a positive number."""
     while True:
-        raw = console.input(prompt)
+        raw = ask(label)
         try:
             amount = float(raw)
-            if amount <= 0:
-                console.print("[red]Amount must be greater than zero.[/red]")
-                continue
-            return amount
         except ValueError:
             console.print("[red]That's not a valid number, try again.[/red]")
+            continue
+        if amount <= 0:
+            console.print("[red]Amount must be greater than zero.[/red]")
+            continue
+        return amount
 
 
-def find_expense(expenses, expense_id):
-    for e in expenses:
-        if e.id == expense_id:
-            return e
-    return None
+def read_date(label: str = "Date (YYYY-MM-DD): ") -> str:
+    """Prompt until the user types a real calendar date."""
+    while True:
+        raw = ask(label)
+        try:
+            return datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
+        except ValueError:
+            console.print("[red]Please enter a real date in YYYY-MM-DD format.[/red]")
 
 
-def add_expense(expenses, budgets):
-    console.print(Panel("Add Expense", style="bold cyan"))
-    amount = read_amount()
-    category = console.input(
-        "[cyan]Category (e.g. food, transport, rent): [/cyan]").strip().lower()
-    date = console.input("[cyan]Date (YYYY-MM-DD): [/cyan]")
-    note = console.input("[cyan]Note (optional): [/cyan]")
-
-    new_expense = Expense(amount, category, date, note)
-    expenses.append(new_expense)
-    save_expenses(expenses)
-    console.print("[bold green]Expense added![/bold green]")
-
-    if category in budgets:
-        spent = group_by_category(expenses).get(category, 0)
-        if spent > budgets[category]:
-            console.print(
-                f"[bold red]Warning: {category} is now ${spent:.2f}, "
-                f"over its ${budgets[category]:.2f} budget![/bold red]")
-    console.print()
+def read_month(label: str = "Month (YYYY-MM): ") -> str:
+    """Prompt until the user types a valid year-month."""
+    while True:
+        raw = ask(label)
+        try:
+            return datetime.strptime(raw, "%Y-%m").strftime("%Y-%m")
+        except ValueError:
+            console.print("[red]Please use YYYY-MM format, e.g. 2026-07.[/red]")
 
 
-def view_expenses(expenses):
-    console.print(Panel("All Expenses", style="bold cyan"))
-    if not expenses:
-        console.print("[yellow]No expenses recorded yet.[/yellow]\n")
-        return
+def read_category(label: str = "Category (e.g. food, transport, rent): ") -> str:
+    """Prompt until the user types a non-empty category; normalized to lowercase."""
+    while True:
+        category = ask(label).lower()
+        if category:
+            return category
+        console.print("[red]Category can't be empty.[/red]")
 
+
+# ---------- display helpers ----------
+
+def expenses_table(expenses: list[Expense]) -> Table:
+    """Build a table of expenses, oldest first."""
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("ID")
     table.add_column("Date")
@@ -69,17 +82,52 @@ def view_expenses(expenses):
     table.add_column("Amount", justify="right")
     table.add_column("Note")
 
-    for e in sorted(expenses, key=lambda e: e.date):
+    for e in sorted(expenses, key=lambda x: x.date):
         table.add_row(e.id, e.date, e.category, f"${e.amount:.2f}", e.note)
+    return table
 
-    console.print(table)
+
+def find_expense(expenses: list[Expense], expense_id: str) -> Expense | None:
+    return next((e for e in expenses if e.id == expense_id), None)
+
+
+# ---------- menu actions ----------
+
+def add_expense(expenses: list[Expense], budgets: dict[str, float]) -> None:
+    console.print(Panel("Add Expense", style="bold cyan"))
+    expense = Expense(
+        amount=read_amount(),
+        category=read_category(),
+        date=read_date(),
+        note=ask("Note (optional): "),
+    )
+    expenses.append(expense)
+    save_expenses(expenses)
+    console.print("[bold green]Expense added![/bold green]")
+
+    limit = budgets.get(expense.category)
+    if limit is not None:
+        spent = group_by_category(expenses)[expense.category]
+        if spent > limit:
+            console.print(
+                f"[bold red]Warning: {expense.category} is now ${spent:.2f}, "
+                f"over its ${limit:.2f} budget![/bold red]")
+    console.print()
+
+
+def view_expenses(expenses: list[Expense]) -> None:
+    console.print(Panel("All Expenses", style="bold cyan"))
+    if not expenses:
+        console.print("[yellow]No expenses recorded yet.[/yellow]\n")
+        return
+
+    console.print(expenses_table(expenses))
     console.print(f"[bold]Total:[/bold] [green]${total_amount(expenses):.2f}[/green]\n")
 
 
-def monthly_summary(expenses):
+def monthly_summary(expenses: list[Expense]) -> None:
     console.print(Panel("Monthly Summary", style="bold cyan"))
-    month = console.input("[cyan]Enter month (YYYY-MM): [/cyan]")
-
+    month = read_month()
     matching = filter_by_month(expenses, month)
 
     if not matching:
@@ -93,7 +141,6 @@ def monthly_summary(expenses):
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Category")
     table.add_column("Amount", justify="right")
-
     for category, amount in group_by_category(matching).items():
         table.add_row(category, f"${amount:.2f}")
 
@@ -101,60 +148,60 @@ def monthly_summary(expenses):
     console.print()
 
 
-def edit_expense(expenses):
+def edit_expense(expenses: list[Expense]) -> None:
     console.print(Panel("Edit Expense", style="bold cyan"))
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
 
-    view_expenses(expenses)
-    expense_id = console.input("[cyan]Enter the ID to edit: [/cyan]").strip()
-    target = find_expense(expenses, expense_id)
-    if not target:
+    console.print(expenses_table(expenses))
+    target = find_expense(expenses, ask("Enter the ID to edit: "))
+    if target is None:
         console.print("[red]No expense with that ID.[/red]\n")
         return
 
     console.print("[dim]Press Enter to keep the current value.[/dim]")
 
-    raw_amount = console.input(f"[cyan]Amount [{target.amount}]: $[/cyan]")
-    if raw_amount.strip():
+    raw = ask(f"Amount [{target.amount}]: $")
+    if raw:
         try:
-            target.amount = float(raw_amount)
+            target.amount = float(raw)
         except ValueError:
             console.print("[red]Invalid amount, keeping the old value.[/red]")
 
-    raw_category = console.input(f"[cyan]Category [{target.category}]: [/cyan]")
-    if raw_category.strip():
-        target.category = raw_category.strip().lower()
+    raw = ask(f"Category [{target.category}]: ")
+    if raw:
+        target.category = raw.lower()
 
-    raw_date = console.input(f"[cyan]Date [{target.date}]: [/cyan]")
-    if raw_date.strip():
-        target.date = raw_date.strip()
+    raw = ask(f"Date [{target.date}]: ")
+    if raw:
+        try:
+            target.date = datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
+        except ValueError:
+            console.print("[red]Invalid date, keeping the old value.[/red]")
 
-    raw_note = console.input(f"[cyan]Note [{target.note}]: [/cyan]")
-    if raw_note.strip():
-        target.note = raw_note
+    raw = ask(f"Note [{target.note}]: ")
+    if raw:
+        target.note = raw
 
     save_expenses(expenses)
     console.print("[bold green]Expense updated![/bold green]\n")
 
 
-def delete_expense(expenses):
+def delete_expense(expenses: list[Expense]) -> None:
     console.print(Panel("Delete Expense", style="bold cyan"))
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
 
-    view_expenses(expenses)
-    expense_id = console.input("[cyan]Enter the ID to delete: [/cyan]").strip()
-    target = find_expense(expenses, expense_id)
-    if not target:
+    console.print(expenses_table(expenses))
+    target = find_expense(expenses, ask("Enter the ID to delete: "))
+    if target is None:
         console.print("[red]No expense with that ID.[/red]\n")
         return
 
-    confirm = console.input(
-        f"[red]Delete {target.date} | {target.category} | ${target.amount:.2f}? (y/n): [/red]")
-    if confirm.strip().lower() == "y":
+    confirm = ask(f"Delete {target.date} | {target.category} | ${target.amount:.2f}? (y/n): ")
+    if confirm.lower() == "y":
         expenses.remove(target)
         save_expenses(expenses)
         console.print("[bold green]Expense deleted.[/bold green]\n")
@@ -162,21 +209,19 @@ def delete_expense(expenses):
         console.print("[yellow]Cancelled.[/yellow]\n")
 
 
-def manage_budgets(expenses, budgets):
+def manage_budgets(expenses: list[Expense], budgets: dict[str, float]) -> None:
     console.print(Panel("Budgets", style="bold cyan"))
     console.print("[cyan]1.[/cyan] Set a budget")
     console.print("[cyan]2.[/cyan] View budget status")
-    choice = console.input("[bold]Choose an option: [/bold]")
+    choice = console.input("[bold]Choose an option: [/bold]").strip()
 
     if choice == "1":
-        category = console.input("[cyan]Category: [/cyan]").strip().lower()
-        limit = read_amount("[cyan]Monthly budget: $[/cyan]")
+        category = read_category("Category: ")
+        limit = read_amount("Monthly budget: $")
         budgets[category] = limit
         save_budgets(budgets)
         console.print(f"[bold green]Budget set: {category} -> ${limit:.2f}[/bold green]\n")
-        return
-
-    if choice == "2":
+    elif choice == "2":
         if not budgets:
             console.print("[yellow]No budgets set yet.[/yellow]\n")
             return
@@ -189,18 +234,17 @@ def manage_budgets(expenses, budgets):
         table.add_column("Status")
 
         for category, limit in budgets.items():
-            amount = spent.get(category, 0)
+            amount = spent.get(category, 0.0)
             status = "[red]Over[/red]" if amount > limit else "[green]OK[/green]"
             table.add_row(category, f"${amount:.2f}", f"${limit:.2f}", status)
 
         console.print(table)
         console.print()
-        return
+    else:
+        console.print("[red]Invalid option.[/red]\n")
 
-    console.print("[red]Invalid option.[/red]\n")
 
-
-def spending_chart(expenses):
+def spending_chart(expenses: list[Expense]) -> None:
     console.print(Panel("Spending by Category", style="bold cyan"))
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
@@ -211,66 +255,63 @@ def spending_chart(expenses):
     bar_width = 40
 
     for category, amount in sorted(totals.items(), key=lambda item: -item[1]):
-        filled = int((amount / max_amount) * bar_width) if max_amount else 0
-        bar = "█" * filled
+        bar = "█" * int((amount / max_amount) * bar_width)
         console.print(f"{category:12} [green]{bar}[/green] ${amount:.2f}")
     console.print()
 
 
-def export_csv(expenses):
+def export_to_csv(expenses: list[Expense]) -> None:
     console.print(Panel("Export to CSV", style="bold cyan"))
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
 
-    with open(CSV_FILE, "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["id", "date", "category", "amount", "note"])
-        for e in sorted(expenses, key=lambda e: e.date):
-            writer.writerow([e.id, e.date, e.category, e.amount, e.note])
-
-    console.print(f"[bold green]Exported to {CSV_FILE}[/bold green]\n")
+    path = export_csv(expenses)
+    console.print(f"[bold green]Exported to {path.name}[/bold green]\n")
 
 
-def main():
-    expenses = load_expenses()
-    budgets = load_budgets()
+# ---------- entry point ----------
+
+def main() -> None:
+    try:
+        expenses = load_expenses()
+        budgets = load_budgets()
+    except json.JSONDecodeError as err:
+        console.print(
+            "[bold red]Could not read saved data — "
+            f"data.json or budgets.json is not valid JSON ({err}).[/bold red]")
+        return
+
+    actions = {
+        "1": ("Add expense", lambda: add_expense(expenses, budgets)),
+        "2": ("View all expenses", lambda: view_expenses(expenses)),
+        "3": ("Monthly summary", lambda: monthly_summary(expenses)),
+        "4": ("Edit expense", lambda: edit_expense(expenses)),
+        "5": ("Delete expense", lambda: delete_expense(expenses)),
+        "6": ("Budgets", lambda: manage_budgets(expenses, budgets)),
+        "7": ("Spending chart", lambda: spending_chart(expenses)),
+        "8": ("Export to CSV", lambda: export_to_csv(expenses)),
+    }
+    exit_key = "9"
 
     while True:
         console.print(Panel("[bold]Expense Tracker[/bold]", style="bold blue"))
-        console.print("[cyan]1.[/cyan] Add expense")
-        console.print("[cyan]2.[/cyan] View all expenses")
-        console.print("[cyan]3.[/cyan] Monthly summary")
-        console.print("[cyan]4.[/cyan] Edit expense")
-        console.print("[cyan]5.[/cyan] Delete expense")
-        console.print("[cyan]6.[/cyan] Budgets")
-        console.print("[cyan]7.[/cyan] Spending chart")
-        console.print("[cyan]8.[/cyan] Export to CSV")
-        console.print("[cyan]9.[/cyan] Exit")
-        choice = console.input("\n[bold]Choose an option: [/bold]")
+        for key, (label, _) in actions.items():
+            console.print(f"[cyan]{key}.[/cyan] {label}")
+        console.print(f"[cyan]{exit_key}.[/cyan] Exit")
 
-        if choice == "1":
-            add_expense(expenses, budgets)
-        elif choice == "2":
-            view_expenses(expenses)
-        elif choice == "3":
-            monthly_summary(expenses)
-        elif choice == "4":
-            edit_expense(expenses)
-        elif choice == "5":
-            delete_expense(expenses)
-        elif choice == "6":
-            manage_budgets(expenses, budgets)
-        elif choice == "7":
-            spending_chart(expenses)
-        elif choice == "8":
-            export_csv(expenses)
-        elif choice == "9":
+        choice = console.input("\n[bold]Choose an option: [/bold]").strip()
+        if choice == exit_key:
             console.print("[bold red]Goodbye.[/bold red]")
             break
+        if choice in actions:
+            actions[choice][1]()
         else:
             console.print("[red]Invalid option, try again.[/red]\n")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Goodbye.[/bold red]")
