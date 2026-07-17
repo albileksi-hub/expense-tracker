@@ -60,6 +60,11 @@ def authenticate(username: str, password: str) -> str:
     return username
 
 
+def user_exists(username: str) -> bool:
+    """True if the account still exists in the accounts file."""
+    return (username or "").strip().lower() in _load_users()
+
+
 def is_pro(username: str) -> bool:
     """True if the account has the (mock) Pro subscription."""
     record = _load_users().get((username or "").strip().lower())

@@ -137,6 +137,17 @@ def test_scan_without_a_file_is_handled(client):
     assert b"choose a receipt image" in resp.data
 
 
+def test_stale_session_is_cleared_when_account_gone(client, tmp_path):
+    # the account exists and is logged in
+    assert client.get("/dashboard").status_code == 200
+    # simulate the accounts file being wiped out from under the session
+    (tmp_path / "users.json").unlink()
+    # next request should log them out cleanly, not silently misbehave
+    resp = client.get("/dashboard")
+    assert resp.status_code == 302
+    assert "/login" in resp.headers["Location"]
+
+
 def test_insights_gated_behind_pro(client):
     # the fixture user "tester" is not Pro yet -> redirect to upgrade
     resp = client.get("/insights")

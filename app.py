@@ -89,6 +89,16 @@ def handle_corrupt_data(err):
     return render_template("error.html", message=str(err)), 500
 
 
+@app.before_request
+def drop_stale_session():
+    """If the logged-in account no longer exists (e.g. the accounts file was
+    reset), clear the session so the user is cleanly logged out instead of
+    ending up in a broken half-signed-in state."""
+    user = session.get("user")
+    if user is not None and not auth.user_exists(user):
+        session.pop("user", None)
+
+
 @app.context_processor
 def inject_pro_status():
     """Make the current account's Pro status available to every template."""
