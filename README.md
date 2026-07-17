@@ -8,6 +8,8 @@ Both share the same data file, so you can use either interchangeably.
 
 - **Multiple accounts** (web app) — sign up, log in, and each account keeps its
   own private expenses and budgets
+- **Scan a receipt** (web app) — upload a photo and Claude reads the amount,
+  date, and category for you to confirm (see below)
 - Add, view, edit, and delete expenses (each entry gets a short unique ID)
 - Monthly summaries with per-category totals
 - Category budgets with over-budget warnings
@@ -34,6 +36,22 @@ python3 main.py   # terminal version
 python3 app.py    # web version, then open http://localhost:5050
 ```
 
+## Receipt scanning (optional)
+
+The web app can read a receipt photo and auto-fill the expense using Claude's
+vision model. It's optional and **off until you provide your own API key** — the
+"Scan a receipt" button always works, but without a key it drops you straight to
+a manual review form. To turn on automatic extraction:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-... python3 app.py
+```
+
+Every scan still ends on a **review screen** so you can correct anything before
+saving — auto-extraction is a head start, not the final word. The model is set
+in `receipt.py` (`claude-opus-4-8` by default; switch to `claude-haiku-4-5` there
+for cheaper, faster scans).
+
 ## Running the tests
 
 ```bash
@@ -52,7 +70,8 @@ python3 -m pytest -v
 | `storage.py` | Persistence: per-account JSON save/load and CSV export |
 | `validation.py` | Input rules (amount, date, category) shared by both front ends |
 | `auth.py` | Account registration and password hashing (web app) |
-| `test_*.py` | Unit tests for validation, storage, reports, auth, and the web routes |
+| `receipt.py` | Receipt scanning via Claude vision, with a manual fallback |
+| `test_*.py` | Unit tests for validation, storage, reports, auth, receipts, and the web routes |
 
 The calculation logic (`reports.py`), the data layer (`storage.py`), and the
 input rules (`validation.py`) are shared, unmodified, between the terminal and

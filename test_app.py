@@ -1,12 +1,22 @@
+import io
 from datetime import datetime
 
 import pytest
+from PIL import Image
 
 import auth
+import receipt
 import storage
 from app import app
 
 TODAY = datetime.now().date().isoformat()
+
+
+def _image_upload():
+    buf = io.BytesIO()
+    Image.new("RGB", (40, 40), (150, 150, 150)).save(buf, format="PNG")
+    buf.seek(0)
+    return {"receipt": (buf, "receipt.png")}
 
 
 @pytest.fixture
@@ -96,6 +106,34 @@ def test_setting_budget_over_limit_flags_over(client):
 
     resp = client.get("/dashboard")
     assert b"Over budget" in resp.data
+
+
+def test_scan_shows_prefilled_review(client, monkeypatch):
+    # pretend Claude read the receipt
+    monkeypatch.setattr(receipt, "extract_receipt", lambda b64, mt: {
+        "amount": "24.50", "date": TODAY, "category": "groceries", "note": "Trader Joe's"})
+
+    resp = client.post("/scan", data=_image_upload(), content_type="multipart/form-data")
+    assert resp.status_code == 200
+    assert b"Review expense" in resp.data
+    assert b"24.50" in resp.data and b"groceries" in resp.data
+
+
+def test_scan_falls_back_to_manual_when_unconfigured(client, monkeypatch):
+    def _raise(b64, mt):
+        raise receipt.ReceiptError("Automatic scanning isn't turned on")
+    monkeypatch.setattr(receipt, "extract_receipt", _raise)
+
+    resp = client.post("/scan", data=_image_upload(), content_type="multipart/form-data")
+    assert resp.status_code == 200
+    assert b"Review expense" in resp.data          # manual form still shown
+    assert b"isn&#39;t turned on" in resp.data      # the message is surfaced
+
+
+def test_scan_without_a_file_is_handled(client):
+    resp = client.post("/scan", data={}, content_type="multipart/form-data")
+    assert resp.status_code == 200
+    assert b"choose a receipt image" in resp.data
 
 
 def test_two_accounts_do_not_see_each_others_data(anon_client):

@@ -15,6 +15,7 @@ from flask import (
 )
 
 import auth
+import receipt
 from expense import Expense
 from reports import filter_by_month, group_by_category, over_budget_categories, total_amount
 from storage import (
@@ -29,6 +30,7 @@ from validation import ValidationError, parse_amount, parse_category, parse_date
 app = Flask(__name__)
 # In production this must come from the environment; the fallback is dev-only.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me-in-production")
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB cap on uploads
 
 
 # ---------- auth helpers ----------
@@ -154,6 +156,30 @@ def add():
     expenses.append(expense)
     save_expenses(expenses, user)
     return redirect(url_for("index"))
+
+
+@app.route("/scan", methods=["POST"])
+@login_required
+def scan():
+    """Read an uploaded receipt photo and show a pre-filled review form."""
+    upload = request.files.get("receipt")
+    if upload is None or not upload.filename:
+        return render_dashboard(error="Please choose a receipt image to scan.")
+
+    blank = {"amount": "", "category": "", "date": "", "note": ""}
+    try:
+        image_b64, media_type = receipt.prepare_image(upload.stream)
+        fields = receipt.extract_receipt(image_b64, media_type)
+    except receipt.ReceiptError as err:
+        # Fall back to a manual review form so the feature still works.
+        return render_template("review.html", fields=blank, message=str(err))
+
+    return render_template("review.html", fields=fields, message=None)
+
+
+@app.errorhandler(413)
+def handle_too_large(err):
+    return render_dashboard(error="That image is too large — please upload one under 10 MB.")
 
 
 @app.route("/edit/<expense_id>", methods=["GET", "POST"])

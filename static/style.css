@@ -259,6 +259,45 @@ button.secondary:hover { border-color: var(--accent); background: rgba(94, 234, 
 }
 .error-banner::before { content: "⚠"; font-size: 1rem; }
 
+.info-banner {
+  background: rgba(94, 234, 212, 0.1);
+  border: 1px solid rgba(94, 234, 212, 0.5);
+  color: var(--accent);
+  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+/* ---------- receipt scan ---------- */
+
+.scan-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.scan-form input[type="file"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.45rem 0.6rem;
+  color: var(--muted);
+}
+
+.scan-form input[type="file"]::file-selector-button {
+  margin-right: 0.75rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--bg-2);
+  color: var(--text);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.scan-hint { margin: 0.9rem 0 0; color: var(--muted); font-size: 0.82rem; }
+
 /* ---------- header user + logout ---------- */
 
 .nav-user {

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Review scanned receipt{% endblock %}
+
+{% block content %}
+{% if message %}
+  <div class="error-banner">{{ message }}</div>
+{% else %}
+  <div class="info-banner">✨ Scanned! Check the details below, tweak anything, then save.</div>
+{% endif %}
+
+<div class="panel">
+  <h2>Review expense</h2>
+  <form method="post" action="{{ url_for('add') }}" class="form-grid">
+    <div>
+      <label>Amount ($)</label>
+      <input type="number" step="0.01" min="0.01" name="amount" value="{{ fields.amount }}" required>
+    </div>
+    <div>
+      <label>Category</label>
+      <input type="text" name="category" value="{{ fields.category }}" placeholder="food, rent, transport…" required>
+    </div>
+    <div>
+      <label>Date</label>
+      <input type="date" name="date" value="{{ fields.date }}" required>
+    </div>
+    <div>
+      <label>Note</label>
+      <input type="text" name="note" value="{{ fields.note }}" placeholder="optional">
+    </div>
+    <button type="submit">Save expense</button>
+  </form>
+  <p style="margin-top: 1rem;"><a href="{{ url_for('index') }}" style="color: var(--muted);">← Back to dashboard</a></p>
+</div>
+{% endblock %}

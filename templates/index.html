@@ -17,6 +17,15 @@
   {% endif %}
 </div>
 
+<div class="panel scan-panel">
+  <h2>📷 Scan a receipt</h2>
+  <form method="post" action="{{ url_for('scan') }}" enctype="multipart/form-data" class="scan-form">
+    <input type="file" name="receipt" accept="image/*" required>
+    <button type="submit">Scan &amp; review</button>
+  </form>
+  <p class="scan-hint">Snap or upload a receipt photo and it'll fill in the details for you to confirm.</p>
+</div>
+
 <div class="panel">
   <h2>Add expense</h2>
   <form method="post" action="{{ url_for('add') }}" class="form-grid">
