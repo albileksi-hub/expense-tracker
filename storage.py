@@ -10,18 +10,20 @@ no matter which directory it is launched from.
 
 import csv
 import json
+import os
 from pathlib import Path
 
 from expense import Expense
 
-_BASE_DIR = Path(__file__).resolve().parent
+# Data lives next to the code by default. Set EXPENSE_DATA_DIR to redirect it
+# elsewhere — used to keep test/preview data completely separate from your real
+# accounts so testing can never overwrite them.
+_BASE_DIR = Path(os.environ.get("EXPENSE_DATA_DIR") or Path(__file__).resolve().parent)
 
 
 def user_dir(user: str | None = None) -> Path:
     """Directory holding a user's data files (or the shared dir for the CLI)."""
-    if user is None:
-        return _BASE_DIR
-    directory = _BASE_DIR / "user_data" / user
+    directory = _BASE_DIR if user is None else _BASE_DIR / "user_data" / user
     directory.mkdir(parents=True, exist_ok=True)
     return directory
 

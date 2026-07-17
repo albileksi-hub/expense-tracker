@@ -61,6 +61,10 @@ the button takes **no real payment and collects no card details**; it just flips
 a flag on the account so you can try the Pro features. (A real product would wire
 this to a payment processor like Stripe.)
 
+By default the app stores accounts and expenses next to the code. Set
+`EXPENSE_DATA_DIR=/some/path` to store them elsewhere (handy for keeping test
+data separate from real data, or for deployment).
+
 The Insights page has two layers:
 
 - **Local analysis** (always works, no API key): biggest category, its share of

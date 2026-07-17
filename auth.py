@@ -7,11 +7,14 @@ shared, and users should pick a throwaway password.
 """
 
 import json
+import os
 from pathlib import Path
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
-_BASE_DIR = Path(__file__).resolve().parent
+# Honors EXPENSE_DATA_DIR (see storage.py) so test/preview accounts stay separate
+# from real ones.
+_BASE_DIR = Path(os.environ.get("EXPENSE_DATA_DIR") or Path(__file__).resolve().parent)
 USERS_FILE = _BASE_DIR / "users.json"
 
 MIN_USERNAME = 3
@@ -29,6 +32,7 @@ def _load_users() -> dict:
 
 
 def _save_users(users: dict) -> None:
+    USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
     USERS_FILE.write_text(json.dumps(users, indent=2))
 
 
