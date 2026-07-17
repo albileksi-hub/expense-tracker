@@ -14,8 +14,10 @@
         <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Expenses</a>
         <a href="{{ url_for('summary') }}" class="{{ 'active' if request.endpoint == 'summary' }}">Summary</a>
         <a href="{{ url_for('budgets') }}" class="{{ 'active' if request.endpoint == 'budgets' }}">Budgets</a>
+        <a href="{{ url_for('insights_view') if is_pro else url_for('upgrade') }}"
+           class="{{ 'active' if request.endpoint in ('insights_view', 'upgrade') }}">✨ Insights</a>
         <a href="{{ url_for('export') }}">Export CSV</a>
-        <span class="nav-user">👤 {{ session.user }}</span>
+        <span class="nav-user">👤 {{ session.user }}{% if is_pro %} · Pro{% endif %}</span>
         <form class="inline" method="post" action="{{ url_for('logout') }}">
           <button type="submit" class="small secondary">Log out</button>
         </form>

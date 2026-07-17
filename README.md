@@ -10,6 +10,8 @@ Both share the same data file, so you can use either interchangeably.
   own private expenses and budgets
 - **Scan a receipt** (web app) — upload a photo and Claude reads the amount,
   date, and category for you to confirm (see below)
+- **Pro insights** (web app) — a mock subscription unlocks a spending-analysis
+  page: local stats plus an optional AI opinion on where you're overspending
 - Add, view, edit, and delete expenses (each entry gets a short unique ID)
 - Monthly summaries with per-category totals
 - Category budgets with over-budget warnings
@@ -52,6 +54,21 @@ saving — auto-extraction is a head start, not the final word. The model is set
 in `receipt.py` (`claude-opus-4-8` by default; switch to `claude-haiku-4-5` there
 for cheaper, faster scans).
 
+## Pro subscription & AI insights
+
+"Upgrade to Pro" unlocks an **Insights** page. The **subscription is a mock** —
+the button takes **no real payment and collects no card details**; it just flips
+a flag on the account so you can try the Pro features. (A real product would wire
+this to a payment processor like Stripe.)
+
+The Insights page has two layers:
+
+- **Local analysis** (always works, no API key): biggest category, its share of
+  spending, average per expense.
+- **AI advisor** (needs `ANTHROPIC_API_KEY`): Claude reviews your spending
+  breakdown and suggests where you're overspending and how to cut back. Without a
+  key, the page still shows the local analysis and explains how to enable the AI part.
+
 ## Running the tests
 
 ```bash
@@ -71,7 +88,8 @@ python3 -m pytest -v
 | `validation.py` | Input rules (amount, date, category) shared by both front ends |
 | `auth.py` | Account registration and password hashing (web app) |
 | `receipt.py` | Receipt scanning via Claude vision, with a manual fallback |
-| `test_*.py` | Unit tests for validation, storage, reports, auth, receipts, and the web routes |
+| `insights.py` | Local spending analysis + an optional Claude opinion (Pro) |
+| `test_*.py` | Unit tests for validation, storage, reports, auth, receipts, insights, and the web routes |
 
 The calculation logic (`reports.py`), the data layer (`storage.py`), and the
 input rules (`validation.py`) are shared, unmodified, between the terminal and

@@ -5,6 +5,7 @@ import pytest
 from PIL import Image
 
 import auth
+import insights
 import receipt
 import storage
 from app import app
@@ -134,6 +135,39 @@ def test_scan_without_a_file_is_handled(client):
     resp = client.post("/scan", data={}, content_type="multipart/form-data")
     assert resp.status_code == 200
     assert b"choose a receipt image" in resp.data
+
+
+def test_insights_gated_behind_pro(client):
+    # the fixture user "tester" is not Pro yet -> redirect to upgrade
+    resp = client.get("/insights")
+    assert resp.status_code == 302
+    assert "/upgrade" in resp.headers["Location"]
+
+
+def test_upgrade_unlocks_insights(client, monkeypatch):
+    # avoid any real API call for the opinion
+    monkeypatch.setattr(insights, "ai_opinion",
+                        lambda expenses: "Spend less on shoes.")
+
+    client.post("/add", data={"amount": "50", "category": "shoes", "date": TODAY})
+    client.post("/upgrade")  # mock subscribe
+    assert auth.is_pro("tester") is True
+
+    resp = client.get("/insights")
+    assert resp.status_code == 200
+    assert b"spending insights" in resp.data.lower()
+    assert b"Spend less on shoes" in resp.data
+
+
+def test_insights_still_works_without_api_key(client):
+    # no ANTHROPIC_API_KEY -> local stats show, AI section shows the fallback note
+    client.post("/add", data={"amount": "80", "category": "rent", "date": TODAY})
+    client.post("/upgrade")
+
+    resp = client.get("/insights")
+    assert resp.status_code == 200
+    assert b"biggest category" in resp.data       # local insight rendered
+    assert b"isn&#39;t turned on" in resp.data     # AI fallback message
 
 
 def test_two_accounts_do_not_see_each_others_data(anon_client):

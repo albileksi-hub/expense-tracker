@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Insights{% endblock %}
+
+{% block content %}
+<div class="panel">
+  <h2>✨ Your spending insights</h2>
+  {% if local.count == 0 %}
+    <p class="empty">No expenses yet — add a few and your insights will appear here.</p>
+  {% else %}
+    <div class="insight-stats">
+      <div class="stat-card">
+        <div class="stat-number">${{ "%.0f"|format(local.total) }}</div>
+        <div class="stat-label">total spent</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ local.top_category }}</div>
+        <div class="stat-label">biggest category · {{ "%.0f"|format(local.top_share * 100) }}% of spending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">${{ "%.2f"|format(local.average) }}</div>
+        <div class="stat-label">average per expense</div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2>🤖 AI advisor</h2>
+  {% if opinion_error %}
+    <div class="info-banner">{{ opinion_error }}</div>
+    <p class="empty">The stats above are computed on your own machine and don't need a key —
+      the personalized written opinion is the part that uses Claude.</p>
+  {% elif opinion %}
+    <div class="ai-opinion">{{ opinion }}</div>
+  {% else %}
+    <p class="empty">No opinion available.</p>
+  {% endif %}
+</div>
+{% endblock %}

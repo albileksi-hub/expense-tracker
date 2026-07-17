@@ -15,6 +15,7 @@ from flask import (
 )
 
 import auth
+import insights
 import receipt
 from expense import Expense
 from reports import filter_by_month, group_by_category, over_budget_categories, total_amount
@@ -49,6 +50,18 @@ def login_required(view):
     return wrapped
 
 
+def pro_required(view):
+    """Send non-Pro accounts to the upgrade page."""
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        if current_user() is None:
+            return redirect(url_for("login"))
+        if not auth.is_pro(current_user()):
+            return redirect(url_for("upgrade"))
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def current_month() -> str:
     """Today's month as a canonical 'YYYY-MM' string."""
     return datetime.now().strftime("%Y-%m")
@@ -74,6 +87,13 @@ def render_dashboard(error: str | None = None):
 def handle_corrupt_data(err):
     """Show a friendly page instead of a 500 when a data file is invalid JSON."""
     return render_template("error.html", message=str(err)), 500
+
+
+@app.context_processor
+def inject_pro_status():
+    """Make the current account's Pro status available to every template."""
+    user = current_user()
+    return {"is_pro": user is not None and auth.is_pro(user)}
 
 
 # ---------- auth routes ----------
@@ -267,6 +287,43 @@ def budgets():
 def export():
     path = export_csv(load_expenses(current_user()), current_user())
     return send_file(path, as_attachment=True, download_name="expenses.csv")
+
+
+# ---------- Pro subscription (mock) + AI insights ----------
+
+@app.route("/upgrade", methods=["GET", "POST"])
+@login_required
+def upgrade():
+    user = current_user()
+    if request.method == "POST":
+        # Mock subscription: no real payment is taken — this just flips the flag.
+        auth.set_pro(user, True)
+        return redirect(url_for("insights_view"))
+    return render_template("upgrade.html", already_pro=auth.is_pro(user))
+
+
+@app.route("/downgrade", methods=["POST"])
+@login_required
+def downgrade():
+    auth.set_pro(current_user(), False)
+    return redirect(url_for("upgrade"))
+
+
+@app.route("/insights")
+@pro_required
+def insights_view():
+    expenses = load_expenses(current_user())
+    local = insights.local_insights(expenses)
+
+    opinion = None
+    opinion_error = None
+    try:
+        opinion = insights.ai_opinion(expenses)
+    except insights.InsightsError as err:
+        opinion_error = str(err)
+
+    return render_template(
+        "insights.html", local=local, opinion=opinion, opinion_error=opinion_error)
 
 
 if __name__ == "__main__":

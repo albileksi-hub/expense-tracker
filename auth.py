@@ -58,3 +58,18 @@ def authenticate(username: str, password: str) -> str:
     if record is None or not check_password_hash(record["password_hash"], password or ""):
         raise AuthError("Wrong username or password.")
     return username
+
+
+def is_pro(username: str) -> bool:
+    """True if the account has the (mock) Pro subscription."""
+    record = _load_users().get((username or "").strip().lower())
+    return bool(record and record.get("pro"))
+
+
+def set_pro(username: str, value: bool = True) -> None:
+    """Turn the (mock) Pro subscription on or off for an account."""
+    users = _load_users()
+    username = (username or "").strip().lower()
+    if username in users:
+        users[username]["pro"] = bool(value)
+        _save_users(users)

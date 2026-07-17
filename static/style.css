@@ -372,6 +372,74 @@ button.cta.secondary:hover {
   background: rgba(94, 234, 212, 0.06);
 }
 
+/* ---------- pro / pricing ---------- */
+
+.pricing { display: flex; justify-content: center; padding: 1.5rem 0; }
+
+.pricing-card {
+  max-width: 420px;
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.pricing-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+.pricing-badge {
+  display: inline-block;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.15);
+  color: var(--accent-2);
+  font-weight: 650;
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.pricing-price { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.02em; }
+.pricing-price span { font-size: 1rem; font-weight: 500; color: var(--muted); }
+
+.pricing-features { list-style: none; padding: 0; margin: 1.25rem 0 1.5rem; }
+.pricing-features li { padding: 0.4rem 0; color: var(--text); font-size: 0.92rem; }
+
+.pricing-note {
+  margin: 1.25rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.insight-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.insight-stats .stat-number { font-size: 1.5rem; }
+
+.ai-opinion {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .insight-stats { grid-template-columns: 1fr; }
+}
+
 /* ---------- home / intro page ---------- */
 
 .hero {

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Upgrade to Pro{% endblock %}
+
+{% block content %}
+<div class="pricing">
+  <div class="pricing-card">
+    <div class="pricing-badge">✨ Pro</div>
+    <div class="pricing-price">$4.99<span>/mo</span></div>
+    <ul class="pricing-features">
+      <li>✓ Personalized AI opinion on your spending</li>
+      <li>✓ See what you're wasting the most money on</li>
+      <li>✓ Concrete tips on how to spend less</li>
+      <li>✓ Spending breakdown &amp; insights dashboard</li>
+    </ul>
+
+    {% if already_pro %}
+      <div class="info-banner" style="margin: 0 0 1rem;">You're already on Pro 🎉</div>
+      <a href="{{ url_for('insights_view') }}"><button class="cta" style="width:100%;">Go to Insights →</button></a>
+      <form method="post" action="{{ url_for('downgrade') }}" style="margin-top:0.75rem;">
+        <button type="submit" class="cta secondary" style="width:100%;">Cancel Pro (demo)</button>
+      </form>
+    {% else %}
+      <form method="post">
+        <button type="submit" class="cta" style="width:100%;">Subscribe (demo)</button>
+      </form>
+    {% endif %}
+
+    <p class="pricing-note">
+      🔒 Demo only — no real payment is taken and no card details are collected.
+      This button just enables the Pro features so you can try them.
+    </p>
+  </div>
+</div>
+{% endblock %}
