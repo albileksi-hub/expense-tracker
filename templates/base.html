@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Expense Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>💸 Expense Tracker</h1>
+    <nav>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Expenses</a>
+      <a href="{{ url_for('summary') }}" class="{{ 'active' if request.endpoint == 'summary' }}">Summary</a>
+      <a href="{{ url_for('budgets') }}" class="{{ 'active' if request.endpoint == 'budgets' }}">Budgets</a>
+      <a href="{{ url_for('export') }}">Export CSV</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
