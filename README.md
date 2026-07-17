@@ -39,10 +39,20 @@ python3 -m pytest -v
 | `expense.py` | The `Expense` dataclass and its JSON (de)serialization |
 | `reports.py` | Pure calculation functions (filtering, totals, budget checks) |
 | `storage.py` | Persistence: JSON save/load and CSV export |
-| `test_reports.py` | Unit tests for the model and report logic |
+| `validation.py` | Input rules (amount, date, category) shared by both front ends |
+| `test_*.py` | Unit tests for validation, storage, reports, and the web routes |
 
-The calculation logic in `reports.py` and the data layer in `storage.py` are
-shared, unmodified, between the terminal and web versions — only the interface
-on top differs. `reports.py` is also free of input/output entirely, so every
-business rule can be unit-tested without simulating a terminal session or an
-HTTP request.
+The calculation logic (`reports.py`), the data layer (`storage.py`), and the
+input rules (`validation.py`) are shared, unmodified, between the terminal and
+web versions — only the interface on top differs. Because `validation.py` is the
+single source of truth for what counts as valid input, the CLI and the web app
+reject exactly the same bad input; the only difference is that the CLI re-prompts
+while the web app re-renders the form with an error banner. `reports.py` is free
+of input/output entirely, so every business rule can be unit-tested without
+simulating a terminal session or an HTTP request.
+
+## A note on money and `float`
+
+Amounts are stored as `float` for simplicity. For a real financial app you'd use
+`decimal.Decimal` to avoid binary floating-point rounding (e.g. `0.1 + 0.2`);
+`float` is a deliberate trade-off here for a small personal tracker.

@@ -2,6 +2,7 @@
 {% block title %}Expenses{% endblock %}
 
 {% block content %}
+{% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
 <div class="panel">
   <h2>Total spent</h2>
   <div class="stat">${{ "%.2f"|format(total) }}</div>

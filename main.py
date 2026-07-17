@@ -16,6 +16,13 @@ from storage import (
     save_budgets,
     save_expenses,
 )
+from validation import (
+    ValidationError,
+    parse_amount,
+    parse_category,
+    parse_date,
+    parse_month,
+)
 
 console = Console()
 
@@ -27,48 +34,33 @@ def ask(label: str) -> str:
     return console.input(f"[cyan]{label}[/cyan]").strip()
 
 
-def read_amount(label: str = "Amount: $") -> float:
-    """Prompt until the user types a positive number."""
+def prompt(parser, label: str):
+    """Prompt with `label`, run `parser`, and re-ask until it validates.
+
+    `parser` is one of the parse_* functions from validation.py; this loop is
+    the only difference between how the CLI and the web app handle bad input.
+    """
     while True:
-        raw = ask(label)
         try:
-            amount = float(raw)
-        except ValueError:
-            console.print("[red]That's not a valid number, try again.[/red]")
-            continue
-        if amount <= 0:
-            console.print("[red]Amount must be greater than zero.[/red]")
-            continue
-        return amount
+            return parser(ask(label))
+        except ValidationError as err:
+            console.print(f"[red]{err}[/red]")
+
+
+def read_amount(label: str = "Amount: $") -> float:
+    return prompt(parse_amount, label)
 
 
 def read_date(label: str = "Date (YYYY-MM-DD): ") -> str:
-    """Prompt until the user types a real calendar date."""
-    while True:
-        raw = ask(label)
-        try:
-            return datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
-        except ValueError:
-            console.print("[red]Please enter a real date in YYYY-MM-DD format.[/red]")
+    return prompt(parse_date, label)
 
 
 def read_month(label: str = "Month (YYYY-MM): ") -> str:
-    """Prompt until the user types a valid year-month."""
-    while True:
-        raw = ask(label)
-        try:
-            return datetime.strptime(raw, "%Y-%m").strftime("%Y-%m")
-        except ValueError:
-            console.print("[red]Please use YYYY-MM format, e.g. 2026-07.[/red]")
+    return prompt(parse_month, label)
 
 
 def read_category(label: str = "Category (e.g. food, transport, rent): ") -> str:
-    """Prompt until the user types a non-empty category; normalized to lowercase."""
-    while True:
-        category = ask(label).lower()
-        if category:
-            return category
-        console.print("[red]Category can't be empty.[/red]")
+    return prompt(parse_category, label)
 
 
 # ---------- display helpers ----------
@@ -166,20 +158,20 @@ def edit_expense(expenses: list[Expense]) -> None:
     raw = ask(f"Amount [{target.amount}]: $")
     if raw:
         try:
-            target.amount = float(raw)
-        except ValueError:
-            console.print("[red]Invalid amount, keeping the old value.[/red]")
+            target.amount = parse_amount(raw)
+        except ValidationError as err:
+            console.print(f"[red]{err} Keeping the old value.[/red]")
 
     raw = ask(f"Category [{target.category}]: ")
     if raw:
-        target.category = raw.lower()
+        target.category = parse_category(raw)
 
     raw = ask(f"Date [{target.date}]: ")
     if raw:
         try:
-            target.date = datetime.strptime(raw, "%Y-%m-%d").date().isoformat()
-        except ValueError:
-            console.print("[red]Invalid date, keeping the old value.[/red]")
+            target.date = parse_date(raw)
+        except ValidationError as err:
+            console.print(f"[red]{err} Keeping the old value.[/red]")
 
     raw = ask(f"Note [{target.note}]: ")
     if raw:

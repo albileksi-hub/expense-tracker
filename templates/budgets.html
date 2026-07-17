@@ -2,6 +2,7 @@
 {% block title %}Budgets{% endblock %}
 
 {% block content %}
+{% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
 <div class="panel">
   <h2>Set a monthly budget</h2>
   <form method="post" class="form-grid" style="grid-template-columns: 1fr 1fr auto;">
