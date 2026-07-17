@@ -134,3 +134,66 @@ button.secondary { background: transparent; border: 1px solid var(--border); col
 .empty { color: var(--muted); font-style: italic; }
 
 .actions { display: flex; gap: 0.4rem; }
+
+/* --- home / intro page --- */
+
+.hero {
+  text-align: center;
+  padding: 3rem 1rem 2.5rem;
+}
+
+.hero-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+
+.hero-title {
+  font-size: 2rem;
+  line-height: 1.25;
+  margin: 0 0 1rem;
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.hero-sub {
+  color: var(--muted);
+  max-width: 560px;
+  margin: 0 auto 1.75rem;
+  line-height: 1.5;
+}
+
+.cta {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.stat-number { font-size: 1.75rem; font-weight: 700; color: var(--accent); }
+.stat-label { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.feature { margin-bottom: 0; }
+.feature-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.feature h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.feature p { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.5; }
+
+@media (max-width: 600px) {
+  .hero-stats, .feature-grid { grid-template-columns: 1fr; }
+}

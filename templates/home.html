@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="hero">
+  <div class="hero-emoji">💸</div>
+  <h1 class="hero-title">Track your money without the spreadsheet headache.</h1>
+  <p class="hero-sub">
+    Add expenses in seconds, watch spending by category, set budgets that warn
+    you before you blow them, and see it all as clean charts — no manual math.
+  </p>
+  <a href="{{ url_for('index') }}"><button class="cta">Open the tracker →</button></a>
+</div>
+
+<div class="hero-stats">
+  <div class="stat-card">
+    <div class="stat-number">{{ count }}</div>
+    <div class="stat-label">expenses logged</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">${{ "%.0f"|format(total) }}</div>
+    <div class="stat-label">total tracked</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number">{{ categories }}</div>
+    <div class="stat-label">categories</div>
+  </div>
+</div>
+
+<div class="feature-grid">
+  <div class="panel feature">
+    <div class="feature-icon">✏️</div>
+    <h3>Add &amp; edit in seconds</h3>
+    <p>Log an expense with an amount, category, date, and note — edit or delete anytime.</p>
+  </div>
+  <div class="panel feature">
+    <div class="feature-icon">📊</div>
+    <h3>Monthly summaries</h3>
+    <p>See exactly where your money went each month, broken down by category.</p>
+  </div>
+  <div class="panel feature">
+    <div class="feature-icon">🚨</div>
+    <h3>Budget warnings</h3>
+    <p>Set a monthly limit per category and get flagged the moment you go over.</p>
+  </div>
+  <div class="panel feature">
+    <div class="feature-icon">📁</div>
+    <h3>Export to CSV</h3>
+    <p>Take your data anywhere — one click exports everything to a spreadsheet.</p>
+  </div>
+</div>
+{% endblock %}

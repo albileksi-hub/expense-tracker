@@ -23,6 +23,17 @@ app = Flask(__name__)
 
 
 @app.route("/")
+def home():
+    expenses = load_expenses()
+    return render_template(
+        "home.html",
+        total=total_amount(expenses),
+        count=len(expenses),
+        categories=len(group_by_category(expenses)),
+    )
+
+
+@app.route("/dashboard")
 def index():
     expenses = load_expenses()
     budgets = load_budgets()
