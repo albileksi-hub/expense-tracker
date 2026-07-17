@@ -18,7 +18,13 @@ import auth
 import insights
 import receipt
 from expense import Expense
-from reports import filter_by_month, group_by_category, over_budget_categories, total_amount
+from reports import (
+    filter_by_month,
+    group_by_category,
+    monthly_totals,
+    over_budget_categories,
+    total_amount,
+)
 from storage import (
     export_csv,
     load_budgets,
@@ -65,6 +71,41 @@ def pro_required(view):
 def current_month() -> str:
     """Today's month as a canonical 'YYYY-MM' string."""
     return datetime.now().strftime("%Y-%m")
+
+
+_MONTH_ABBR = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def trend_chart(series, width=720, height=220):
+    """Turn a [(YYYY-MM, total), ...] series into SVG-ready geometry."""
+    pad_l, pad_r, pad_t, pad_b = 46, 16, 26, 34
+    max_amount = max((amount for _, amount in series), default=0.0) or 1.0
+    plot_w, plot_h = width - pad_l - pad_r, height - pad_t - pad_b
+    baseline = pad_t + plot_h
+    count = len(series)
+
+    dots = []
+    for i, (month_key, amount) in enumerate(series):
+        x = pad_l + (plot_w * i / (count - 1) if count > 1 else plot_w / 2)
+        y = pad_t + plot_h * (1 - amount / max_amount)
+        dots.append({
+            "x": round(x, 1), "y": round(y, 1), "amount": amount,
+            "label": _MONTH_ABBR[int(month_key[5:7])],
+        })
+
+    line_points = " ".join(f"{d['x']},{d['y']}" for d in dots)
+    area = ""
+    if dots:
+        area = (f"M {dots[0]['x']},{baseline} "
+                + " ".join(f"L {d['x']},{d['y']}" for d in dots)
+                + f" L {dots[-1]['x']},{baseline} Z")
+
+    return {
+        "width": width, "height": height, "baseline": baseline,
+        "dots": dots, "line_points": line_points, "area": area,
+        "max_amount": max_amount, "has_spending": any(a > 0 for _, a in series),
+    }
 
 
 def render_dashboard(error: str | None = None):
@@ -255,6 +296,7 @@ def summary():
     month = request.args.get("month") or current_month()
     matching = filter_by_month(expenses, month)
     totals = group_by_category(matching)
+    trend = trend_chart(monthly_totals(expenses, months=6))
 
     return render_template(
         "summary.html",
@@ -262,6 +304,7 @@ def summary():
         total=total_amount(matching),
         totals=totals,
         max_amount=max(totals.values()) if totals else 0,
+        trend=trend,
     )
 
 

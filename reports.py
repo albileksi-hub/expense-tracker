@@ -1,5 +1,7 @@
 """Pure calculations over expense lists — no I/O, so everything here is easy to unit test."""
 
+from datetime import date
+
 from expense import Expense
 
 
@@ -31,3 +33,37 @@ def over_budget_categories(
         for category, limit in budgets.items()
         if spent.get(category, 0.0) > limit
     }
+
+
+def _shift_month(year: int, month: int, delta: int) -> tuple[int, int]:
+    """Move `delta` months from (year, month), handling year boundaries."""
+    index = year * 12 + (month - 1) + delta
+    return index // 12, index % 12 + 1
+
+
+def monthly_totals(
+    expenses: list[Expense], months: int = 6, anchor: str | None = None
+) -> list[tuple[str, float]]:
+    """Total spent in each of the last `months` months, oldest first.
+
+    Each item is ('YYYY-MM', total); months with no spending are included as 0.0
+    so the trend line is continuous. `anchor` ('YYYY-MM') sets the most recent
+    month shown; it defaults to whichever is later — this month or the latest
+    expense — so future-dated demo data still appears.
+    """
+    totals: dict[str, float] = {}
+    for e in expenses:
+        key = e.date[:7]
+        totals[key] = totals.get(key, 0.0) + e.amount
+
+    today = date.today()
+    this_month = f"{today.year:04d}-{today.month:02d}"
+    anchor = anchor or max([*totals.keys(), this_month])
+    anchor_year, anchor_month = int(anchor[:4]), int(anchor[5:7])
+
+    series = []
+    for offset in range(months - 1, -1, -1):
+        year, month = _shift_month(anchor_year, anchor_month, -offset)
+        key = f"{year:04d}-{month:02d}"
+        series.append((key, totals.get(key, 0.0)))
+    return series

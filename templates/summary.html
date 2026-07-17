@@ -3,6 +3,37 @@
 
 {% block content %}
 <div class="panel">
+  <h2>📈 Spending trend</h2>
+  {% if trend.has_spending %}
+    <svg class="trend-chart" viewBox="0 0 {{ trend.width }} {{ trend.height }}" preserveAspectRatio="none" role="img">
+      <defs>
+        <linearGradient id="trend-area" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="trend-line" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="var(--accent)"/>
+          <stop offset="100%" stop-color="var(--accent-2)"/>
+        </linearGradient>
+      </defs>
+      <path d="{{ trend.area }}" fill="url(#trend-area)"/>
+      <polyline points="{{ trend.line_points }}" fill="none" stroke="url(#trend-line)"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      {% for d in trend.dots %}
+        <circle cx="{{ d.x }}" cy="{{ d.y }}" r="4" fill="var(--accent)"/>
+        {% if d.amount > 0 %}
+          <text x="{{ d.x }}" y="{{ d.y - 10 }}" text-anchor="middle" class="trend-amount">${{ "%.0f"|format(d.amount) }}</text>
+        {% endif %}
+        <text x="{{ d.x }}" y="{{ trend.baseline + 20 }}" text-anchor="middle" class="trend-xlabel">{{ d.label }}</text>
+      {% endfor %}
+    </svg>
+    <p class="empty" style="margin-top:0.25rem;">total spending per month, last 6 months</p>
+  {% else %}
+    <p class="empty">Add expenses across a few months and your trend line will appear here.</p>
+  {% endif %}
+</div>
+
+<div class="panel">
   <h2>Monthly summary</h2>
   <form method="get" style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: end;">
     <div>

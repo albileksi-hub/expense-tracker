@@ -14,6 +14,8 @@ Both share the same data file, so you can use either interchangeably.
   page: local stats plus an optional AI opinion on where you're overspending
 - Add, view, edit, and delete expenses (each entry gets a short unique ID)
 - Monthly summaries with per-category totals
+- **Spending-over-time trend chart** (web app) — a gradient line chart of the
+  last 6 months, rendered as inline SVG (no chart library, works offline)
 - Category budgets with over-budget warnings
 - Spending bar chart
 - Export to CSV
