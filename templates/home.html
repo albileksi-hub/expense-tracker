@@ -9,23 +9,32 @@
     Add expenses in seconds, watch spending by category, set budgets that warn
     you before you blow them, and see it all as clean charts — no manual math.
   </p>
-  <a href="{{ url_for('index') }}"><button class="cta">Open the tracker →</button></a>
+  {% if stats %}
+    <a href="{{ url_for('index') }}"><button class="cta">Open the tracker →</button></a>
+  {% else %}
+    <div class="hero-cta-row">
+      <a href="{{ url_for('register') }}"><button class="cta">Get started free →</button></a>
+      <a href="{{ url_for('login') }}"><button class="cta secondary">Log in</button></a>
+    </div>
+  {% endif %}
 </div>
 
+{% if stats %}
 <div class="hero-stats">
   <div class="stat-card">
-    <div class="stat-number">{{ count }}</div>
+    <div class="stat-number">{{ stats.count }}</div>
     <div class="stat-label">expenses logged</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">${{ "%.0f"|format(total) }}</div>
+    <div class="stat-number">${{ "%.0f"|format(stats.total) }}</div>
     <div class="stat-label">total tracked</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">{{ categories }}</div>
+    <div class="stat-number">{{ stats.categories }}</div>
     <div class="stat-label">categories</div>
   </div>
 </div>
+{% endif %}
 
 <div class="feature-grid">
   <div class="panel feature">

@@ -1,5 +1,9 @@
 """Reading and writing app data: JSON persistence and CSV export.
 
+Every function takes an optional `user`:
+  * user=None  -> the shared files in this directory (used by the CLI)
+  * user="bob" -> that account's own files under user_data/bob/ (used by the web app)
+
 Paths are anchored to this file's directory, so the app finds its data
 no matter which directory it is launched from.
 """
@@ -11,41 +15,62 @@ from pathlib import Path
 from expense import Expense
 
 _BASE_DIR = Path(__file__).resolve().parent
-DATA_FILE = _BASE_DIR / "data.json"
-BUDGETS_FILE = _BASE_DIR / "budgets.json"
-CSV_FILE = _BASE_DIR / "expenses.csv"
 
 
-def save_expenses(expenses: list[Expense]) -> None:
-    """Write all expenses to DATA_FILE as JSON."""
+def user_dir(user: str | None = None) -> Path:
+    """Directory holding a user's data files (or the shared dir for the CLI)."""
+    if user is None:
+        return _BASE_DIR
+    directory = _BASE_DIR / "user_data" / user
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def _data_file(user: str | None) -> Path:
+    return user_dir(user) / "data.json"
+
+
+def _budgets_file(user: str | None) -> Path:
+    return user_dir(user) / "budgets.json"
+
+
+def _csv_file(user: str | None) -> Path:
+    return user_dir(user) / "expenses.csv"
+
+
+def save_expenses(expenses: list[Expense], user: str | None = None) -> None:
+    """Write all expenses to the user's data file as JSON."""
     data = [e.to_dict() for e in expenses]
-    DATA_FILE.write_text(json.dumps(data, indent=2))
+    _data_file(user).write_text(json.dumps(data, indent=2))
 
 
-def load_expenses() -> list[Expense]:
-    """Read expenses from DATA_FILE. Empty list if the file doesn't exist yet."""
-    if not DATA_FILE.exists():
+def load_expenses(user: str | None = None) -> list[Expense]:
+    """Read the user's expenses. Empty list if the file doesn't exist yet."""
+    path = _data_file(user)
+    if not path.exists():
         return []
-    return [Expense.from_dict(item) for item in json.loads(DATA_FILE.read_text())]
+    return [Expense.from_dict(item) for item in json.loads(path.read_text())]
 
 
-def save_budgets(budgets: dict[str, float]) -> None:
-    """Write the {category: monthly limit} mapping to BUDGETS_FILE."""
-    BUDGETS_FILE.write_text(json.dumps(budgets, indent=2))
+def save_budgets(budgets: dict[str, float], user: str | None = None) -> None:
+    """Write the user's {category: monthly limit} mapping."""
+    _budgets_file(user).write_text(json.dumps(budgets, indent=2))
 
 
-def load_budgets() -> dict[str, float]:
-    """Read budgets from BUDGETS_FILE. Empty dict if the file doesn't exist yet."""
-    if not BUDGETS_FILE.exists():
+def load_budgets(user: str | None = None) -> dict[str, float]:
+    """Read the user's budgets. Empty dict if the file doesn't exist yet."""
+    path = _budgets_file(user)
+    if not path.exists():
         return {}
-    return json.loads(BUDGETS_FILE.read_text())
+    return json.loads(path.read_text())
 
 
-def export_csv(expenses: list[Expense]) -> Path:
-    """Write expenses to CSV_FILE, oldest first. Returns the path written."""
-    with CSV_FILE.open("w", newline="") as f:
+def export_csv(expenses: list[Expense], user: str | None = None) -> Path:
+    """Write the user's expenses to a CSV file, oldest first. Returns the path."""
+    path = _csv_file(user)
+    with path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["id", "date", "category", "amount", "note"])
         for e in sorted(expenses, key=lambda x: x.date):
             writer.writerow([e.id, e.date, e.category, e.amount, e.note])
-    return CSV_FILE
+    return path

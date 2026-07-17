@@ -10,10 +10,19 @@
   <header>
     <a href="{{ url_for('home') }}" style="text-decoration:none; color:inherit;"><h1>💸 Expense Tracker</h1></a>
     <nav>
-      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Expenses</a>
-      <a href="{{ url_for('summary') }}" class="{{ 'active' if request.endpoint == 'summary' }}">Summary</a>
-      <a href="{{ url_for('budgets') }}" class="{{ 'active' if request.endpoint == 'budgets' }}">Budgets</a>
-      <a href="{{ url_for('export') }}">Export CSV</a>
+      {% if session.user %}
+        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Expenses</a>
+        <a href="{{ url_for('summary') }}" class="{{ 'active' if request.endpoint == 'summary' }}">Summary</a>
+        <a href="{{ url_for('budgets') }}" class="{{ 'active' if request.endpoint == 'budgets' }}">Budgets</a>
+        <a href="{{ url_for('export') }}">Export CSV</a>
+        <span class="nav-user">👤 {{ session.user }}</span>
+        <form class="inline" method="post" action="{{ url_for('logout') }}">
+          <button type="submit" class="small secondary">Log out</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('login') }}" class="{{ 'active' if request.endpoint == 'login' }}">Log in</a>
+        <a href="{{ url_for('register') }}"><button type="button" class="small">Sign up</button></a>
+      {% endif %}
     </nav>
   </header>
   <main>
