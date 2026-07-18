@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Expense Tracker{% endblock %}</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💸</text></svg>">
+  <script>
+    // Apply the saved theme before the stylesheet paints, so there's no flash.
+    if (localStorage.getItem("theme") === "light") {
+      document.documentElement.dataset.theme = "light";
+    }
+  </script>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -26,10 +32,33 @@
         <a href="{{ url_for('login') }}" class="{{ 'active' if request.endpoint == 'login' }}">Log in</a>
         <a href="{{ url_for('register') }}"><button type="button" class="small">Sign up</button></a>
       {% endif %}
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch between night and light mode">☀️</button>
     </nav>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
+  <script>
+    const themeToggle = document.getElementById("theme-toggle");
+
+    function syncThemeIcon() {
+      const light = document.documentElement.dataset.theme === "light";
+      themeToggle.textContent = light ? "🌙" : "☀️";
+      themeToggle.title = light ? "Switch to night mode" : "Switch to light mode";
+    }
+
+    themeToggle.addEventListener("click", () => {
+      const toLight = document.documentElement.dataset.theme !== "light";
+      if (toLight) {
+        document.documentElement.dataset.theme = "light";
+      } else {
+        delete document.documentElement.dataset.theme;
+      }
+      localStorage.setItem("theme", toLight ? "light" : "night");
+      syncThemeIcon();
+    });
+
+    syncThemeIcon();
+  </script>
 </body>
 </html>

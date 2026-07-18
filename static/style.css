@@ -1,3 +1,4 @@
+/* Night mode (default) */
 :root {
   --bg: #0e1014;
   --bg-2: #14171f;
@@ -13,6 +14,24 @@
   --ok: #4ade80;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2);
   --ring: 0 0 0 3px rgba(94, 234, 212, 0.25);
+}
+
+/* Light mode: warm white / yellow tones */
+[data-theme="light"] {
+  --bg: #faf6ec;
+  --bg-2: #fffdf4;
+  --panel: #ffffff;
+  --panel-hover: #fffbe6;
+  --border: #eadfc4;
+  --border-light: #dccfa8;
+  --text: #33291a;
+  --muted: #94875f;
+  --accent: #f5b301;
+  --accent-2: #e07b12;
+  --danger: #d92d20;
+  --ok: #1e9e4a;
+  --shadow: 0 1px 3px rgba(120, 100, 40, 0.10), 0 8px 24px rgba(120, 100, 40, 0.08);
+  --ring: 0 0 0 3px rgba(245, 179, 1, 0.30);
 }
 
 * { box-sizing: border-box; }
@@ -39,6 +58,12 @@ body::before {
     radial-gradient(1000px 500px at 0% 0%, rgba(94, 234, 212, 0.08), transparent 55%);
 }
 
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(245, 179, 1, 0.14), transparent 60%),
+    radial-gradient(1000px 500px at 0% 0%, rgba(224, 123, 18, 0.10), transparent 55%);
+}
+
 /* ---------- header ---------- */
 
 header {
@@ -53,6 +78,26 @@ header {
   background: rgba(14, 16, 20, 0.72);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] header { background: rgba(250, 246, 236, 0.82); }
+
+.theme-toggle {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.95rem;
+  box-shadow: none;
+  margin-left: 1rem;
+  line-height: 1;
+}
+.theme-toggle:hover {
+  border-color: var(--accent);
+  transform: none;
+  filter: none;
+  box-shadow: none;
+  background: transparent;
 }
 
 header h1 {
@@ -624,4 +669,49 @@ button.cta.secondary:hover {
   .form-grid { grid-template-columns: 1fr 1fr; }
   .form-grid button { grid-column: 1 / -1; }
   .hero-stats, .feature-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- light-mode fine tuning ----------
+   Overrides for the few spots whose colors are hardcoded rather than
+   driven by the theme variables above. Kept last so they win the cascade. */
+
+[data-theme="light"] tbody tr:hover { background: rgba(245, 179, 1, 0.08); }
+
+[data-theme="light"] .nav-user { background: rgba(245, 179, 1, 0.16); }
+
+[data-theme="light"] .hero-title {
+  background: linear-gradient(180deg, var(--text), #7d6a3a);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+[data-theme="light"] .info-banner {
+  background: rgba(245, 179, 1, 0.13);
+  border-color: rgba(224, 123, 18, 0.55);
+  color: #8a5a00;
+}
+
+[data-theme="light"] .pricing-badge {
+  background: rgba(245, 179, 1, 0.2);
+  color: #a86400;
+}
+
+/* The base button gradient ends in a hardcoded teal; in light mode blend
+   yellow -> orange instead. Danger/secondary re-declared below because they
+   share specificity with this rule and would otherwise lose their colors. */
+[data-theme="light"] button {
+  background: linear-gradient(135deg, #f7c948, var(--accent-2));
+  color: #3a2a00;
+  box-shadow: 0 2px 8px rgba(224, 123, 18, 0.25);
+}
+[data-theme="light"] button.danger {
+  background: linear-gradient(135deg, var(--danger), #ef5555);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(217, 45, 32, 0.2);
+}
+[data-theme="light"] button.secondary,
+[data-theme="light"] .theme-toggle {
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
 }
