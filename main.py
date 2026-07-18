@@ -155,27 +155,20 @@ def edit_expense(expenses: list[Expense]) -> None:
 
     console.print("[dim]Press Enter to keep the current value.[/dim]")
 
-    raw = ask(f"Amount [{target.amount}]: $")
-    if raw:
+    def maybe_update(attr: str, label: str, parser=None) -> None:
+        """Ask for a new value; keep the old one on empty or invalid input."""
+        raw = ask(label)
+        if not raw:
+            return
         try:
-            target.amount = parse_amount(raw)
+            setattr(target, attr, parser(raw) if parser else raw)
         except ValidationError as err:
             console.print(f"[red]{err} Keeping the old value.[/red]")
 
-    raw = ask(f"Category [{target.category}]: ")
-    if raw:
-        target.category = parse_category(raw)
-
-    raw = ask(f"Date [{target.date}]: ")
-    if raw:
-        try:
-            target.date = parse_date(raw)
-        except ValidationError as err:
-            console.print(f"[red]{err} Keeping the old value.[/red]")
-
-    raw = ask(f"Note [{target.note}]: ")
-    if raw:
-        target.note = raw
+    maybe_update("amount", f"Amount [{target.amount}]: $", parse_amount)
+    maybe_update("category", f"Category [{target.category}]: ", parse_category)
+    maybe_update("date", f"Date [{target.date}]: ", parse_date)
+    maybe_update("note", f"Note [{target.note}]: ")
 
     save_expenses(expenses)
     console.print("[bold green]Expense updated![/bold green]\n")

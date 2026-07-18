@@ -22,12 +22,12 @@
       {% for d in trend.dots %}
         <circle cx="{{ d.x }}" cy="{{ d.y }}" r="4" fill="var(--accent)"/>
         {% if d.amount > 0 %}
-          <text x="{{ d.x }}" y="{{ d.y - 10 }}" text-anchor="middle" class="trend-amount">${{ "%.0f"|format(d.amount) }}</text>
+          <text x="{{ d.x }}" y="{{ d.y - 10 }}" text-anchor="middle" class="trend-amount">{{ d.amount|money(0) }}</text>
         {% endif %}
         <text x="{{ d.x }}" y="{{ trend.baseline + 20 }}" text-anchor="middle" class="trend-xlabel">{{ d.label }}</text>
       {% endfor %}
     </svg>
-    <p class="empty" style="margin-top:0.25rem;">total spending per month, last 6 months</p>
+    <p class="empty caption">total spending per month, last 6 months</p>
   {% else %}
     <p class="empty">Add expenses across a few months and your trend line will appear here.</p>
   {% endif %}
@@ -35,26 +35,26 @@
 
 <div class="panel">
   <h2>Monthly summary</h2>
-  <form method="get" style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: end;">
+  <form method="get" class="month-form">
     <div>
-      <label style="display:block; font-size:0.75rem; color:var(--muted); margin-bottom:0.25rem;">Month</label>
+      <label>Month</label>
       <input type="month" name="month" value="{{ month }}">
     </div>
     <button type="submit">View</button>
   </form>
 
-  <div class="stat">${{ "%.2f"|format(total) }}</div>
-  <p class="empty" style="margin-top:0.25rem;">total spent in {{ month }}</p>
+  <div class="stat">{{ total|money }}</div>
+  <p class="empty caption">total spent in {{ month }}</p>
 
   {% if totals %}
-    <div style="margin-top: 1.5rem;">
+    <div class="bar-chart">
       {% for category, amount in totals.items()|sort(attribute="1", reverse=true) %}
       <div class="bar-row">
-        <div class="bar-label">{{ category }}</div>
+        <div class="bar-label"><span class="cat-dot" style="--h: {{ category|hue }}"></span>{{ category }}</div>
         <div class="bar-track">
           <div class="bar-fill" style="width: {{ (amount / max_amount * 100) if max_amount else 0 }}%;"></div>
         </div>
-        <div class="bar-value">${{ "%.2f"|format(amount) }}</div>
+        <div class="bar-value">{{ amount|money }}</div>
       </div>
       {% endfor %}
     </div>

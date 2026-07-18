@@ -14,14 +14,14 @@
     </ul>
 
     {% if already_pro %}
-      <div class="info-banner" style="margin: 0 0 1rem;">You're already on Pro 🎉</div>
-      <a href="{{ url_for('insights_view') }}"><button class="cta" style="width:100%;">Go to Insights →</button></a>
-      <form method="post" action="{{ url_for('downgrade') }}" style="margin-top:0.75rem;">
-        <button type="submit" class="cta secondary" style="width:100%;">Cancel Pro (demo)</button>
+      <div class="info-banner">You're already on Pro 🎉</div>
+      <a href="{{ url_for('insights_view') }}"><button class="cta full">Go to Insights →</button></a>
+      <form method="post" action="{{ url_for('downgrade') }}" class="pricing-cancel">
+        <button type="submit" class="cta secondary full">Cancel Pro (demo)</button>
       </form>
     {% else %}
       <form method="post">
-        <button type="submit" class="cta" style="width:100%;">Subscribe (demo)</button>
+        <button type="submit" class="cta full">Subscribe (demo)</button>
       </form>
     {% endif %}
 

@@ -29,9 +29,9 @@
       {% for category, limit in budgets.items() %}
       {% set amount = spent.get(category, 0) %}
       <tr>
-        <td>{{ category }}</td>
-        <td class="amount">${{ "%.2f"|format(amount) }}</td>
-        <td class="amount">${{ "%.2f"|format(limit) }}</td>
+        <td><span class="cat-dot" style="--h: {{ category|hue }}"></span>{{ category }}</td>
+        <td class="amount">{{ amount|money }}</td>
+        <td class="amount">{{ limit|money }}</td>
         <td>
           {% if amount > limit %}
             <span class="badge over">Over</span>

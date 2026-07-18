@@ -7,6 +7,7 @@ account gets its own isolated expenses and budgets.
 
 import json
 import os
+from calendar import month_abbr
 from datetime import datetime
 from functools import wraps
 
@@ -57,11 +58,10 @@ def login_required(view):
 
 
 def pro_required(view):
-    """Send non-Pro accounts to the upgrade page."""
+    """Send non-Pro accounts to the upgrade page (and anonymous ones to login)."""
+    @login_required
     @wraps(view)
     def wrapped(*args, **kwargs):
-        if current_user() is None:
-            return redirect(url_for("login"))
         if not auth.is_pro(current_user()):
             return redirect(url_for("upgrade"))
         return view(*args, **kwargs)
@@ -73,8 +73,20 @@ def current_month() -> str:
     return datetime.now().strftime("%Y-%m")
 
 
-_MONTH_ABBR = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+@app.template_filter("money")
+def money(amount, decimals=2) -> str:
+    """Format 1276.04 as $1,276.04 (or $1,276 with decimals=0)."""
+    return f"${amount:,.{decimals}f}"
+
+
+@app.template_filter("hue")
+def category_hue(name: str) -> int:
+    """A stable 0-359 hue for a category name, for its color dot.
+
+    Not Python's hash(), which is salted per process — colors must not change
+    between restarts.
+    """
+    return sum(ord(c) * 31 for c in name) % 360
 
 
 def trend_chart(series, width=720, height=220):
@@ -91,7 +103,7 @@ def trend_chart(series, width=720, height=220):
         y = pad_t + plot_h * (1 - amount / max_amount)
         dots.append({
             "x": round(x, 1), "y": round(y, 1), "amount": amount,
-            "label": _MONTH_ABBR[int(month_key[5:7])],
+            "label": month_abbr[int(month_key[5:7])],
         })
 
     line_points = " ".join(f"{d['x']},{d['y']}" for d in dots)
@@ -149,34 +161,32 @@ def inject_pro_status():
 
 # ---------- auth routes ----------
 
-@app.route("/register", methods=["GET", "POST"])
-def register():
+def auth_page(action, template):
+    """Shared GET/POST flow for the login and register pages.
+
+    `action` is auth.authenticate or auth.register — the only difference
+    between the two pages besides their template.
+    """
     if current_user() is not None:
         return redirect(url_for("index"))
     if request.method == "POST":
         try:
-            username = auth.register(
+            session["user"] = action(
                 request.form.get("username"), request.form.get("password"))
+            return redirect(url_for("index"))
         except auth.AuthError as err:
-            return render_template("register.html", error=str(err))
-        session["user"] = username
-        return redirect(url_for("index"))
-    return render_template("register.html")
+            return render_template(template, error=str(err))
+    return render_template(template)
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    return auth_page(auth.register, "register.html")
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if current_user() is not None:
-        return redirect(url_for("index"))
-    if request.method == "POST":
-        try:
-            username = auth.authenticate(
-                request.form.get("username"), request.form.get("password"))
-        except auth.AuthError as err:
-            return render_template("login.html", error=str(err))
-        session["user"] = username
-        return redirect(url_for("index"))
-    return render_template("login.html")
+    return auth_page(auth.authenticate, "login.html")
 
 
 @app.route("/logout", methods=["POST"])
@@ -209,16 +219,21 @@ def index():
     return render_dashboard()
 
 
+def parse_expense_form() -> dict:
+    """Validate the four expense fields of the submitted form (or raise)."""
+    return {
+        "amount": parse_amount(request.form.get("amount")),
+        "category": parse_category(request.form.get("category")),
+        "date": parse_date(request.form.get("date")),
+        "note": request.form.get("note", "").strip(),
+    }
+
+
 @app.route("/add", methods=["POST"])
 @login_required
 def add():
     try:
-        expense = Expense(
-            amount=parse_amount(request.form.get("amount")),
-            category=parse_category(request.form.get("category")),
-            date=parse_date(request.form.get("date")),
-            note=request.form.get("note", "").strip(),
-        )
+        expense = Expense(**parse_expense_form())
     except ValidationError as err:
         return render_dashboard(error=str(err))
 
@@ -237,15 +252,14 @@ def scan():
     if upload is None or not upload.filename:
         return render_dashboard(error="Please choose a receipt image to scan.")
 
-    blank = {"amount": "", "category": "", "date": "", "note": ""}
     try:
-        image_b64, media_type = receipt.prepare_image(upload.stream)
-        fields = receipt.extract_receipt(image_b64, media_type)
+        fields = receipt.extract_receipt(*receipt.prepare_image(upload.stream))
+        message = None
     except receipt.ReceiptError as err:
         # Fall back to a manual review form so the feature still works.
-        return render_template("review.html", fields=blank, message=str(err))
-
-    return render_template("review.html", fields=fields, message=None)
+        fields = {"amount": "", "category": "", "date": "", "note": ""}
+        message = str(err)
+    return render_template("review.html", fields=fields, message=message)
 
 
 @app.errorhandler(413)
@@ -264,16 +278,12 @@ def edit(expense_id):
 
     if request.method == "POST":
         try:
-            amount = parse_amount(request.form.get("amount"))
-            category = parse_category(request.form.get("category"))
-            date = parse_date(request.form.get("date"))
+            fields = parse_expense_form()
         except ValidationError as err:
             return render_template("edit.html", expense=target, error=str(err))
 
-        target.amount = amount
-        target.category = category
-        target.date = date
-        target.note = request.form.get("note", "").strip()
+        for attr, value in fields.items():
+            setattr(target, attr, value)
         save_expenses(expenses, user)
         return redirect(url_for("index"))
 
@@ -313,15 +323,14 @@ def summary():
 def budgets():
     user = current_user()
     budget_map = load_budgets(user)
-    expenses = load_expenses(user)
     month = current_month()
+    spent = group_by_category(filter_by_month(load_expenses(user), month))
 
     if request.method == "POST":
         try:
             category = parse_category(request.form.get("category"))
             limit = parse_amount(request.form.get("limit"))
         except ValidationError as err:
-            spent = group_by_category(filter_by_month(expenses, month))
             return render_template(
                 "budgets.html", current_month=month,
                 budgets=budget_map, spent=spent, error=str(err))
@@ -330,7 +339,6 @@ def budgets():
         save_budgets(budget_map, user)
         return redirect(url_for("budgets"))
 
-    spent = group_by_category(filter_by_month(expenses, month))
     return render_template(
         "budgets.html", current_month=month, budgets=budget_map, spent=spent)
 

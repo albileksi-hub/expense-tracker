@@ -9,7 +9,7 @@
   {% else %}
     <div class="insight-stats">
       <div class="stat-card">
-        <div class="stat-number">${{ "%.0f"|format(local.total) }}</div>
+        <div class="stat-number">{{ local.total|money(0) }}</div>
         <div class="stat-label">total spent</div>
       </div>
       <div class="stat-card">
@@ -17,7 +17,7 @@
         <div class="stat-label">biggest category · {{ "%.0f"|format(local.top_share * 100) }}% of spending</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">${{ "%.2f"|format(local.average) }}</div>
+        <div class="stat-number">{{ local.average|money }}</div>
         <div class="stat-label">average per expense</div>
       </div>
     </div>

@@ -26,7 +26,7 @@
     <div class="stat-label">expenses logged</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">${{ "%.0f"|format(stats.total) }}</div>
+    <div class="stat-number">{{ stats.total|money(0) }}</div>
     <div class="stat-label">total tracked</div>
   </div>
   <div class="stat-card">
