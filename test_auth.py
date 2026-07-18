@@ -1,11 +1,13 @@
 import pytest
 
 import auth
+import storage
 
 
 @pytest.fixture
 def temp_users(tmp_path, monkeypatch):
-    monkeypatch.setattr(auth, "USERS_FILE", tmp_path / "users.json")
+    monkeypatch.setattr(storage, "_BASE_DIR", tmp_path)
+    return tmp_path
 
 
 def test_register_then_authenticate(temp_users):
@@ -16,9 +18,8 @@ def test_register_then_authenticate(temp_users):
 
 def test_password_is_hashed_not_stored_plaintext(temp_users):
     auth.register("bob", "hunter2pass")
-    stored = auth.USERS_FILE.read_text()
-    assert "hunter2pass" not in stored
-    assert "password_hash" in stored
+    stored = (temp_users / "expenses.db").read_bytes()
+    assert b"hunter2pass" not in stored
 
 
 def test_wrong_password_raises(temp_users):
@@ -36,6 +37,15 @@ def test_duplicate_registration_raises(temp_users):
     auth.register("dave", "secret123")
     with pytest.raises(auth.AuthError):
         auth.register("dave", "another123")
+
+
+def test_pro_flag_round_trip(temp_users):
+    auth.register("erin", "secret123")
+    assert auth.is_pro("erin") is False
+    auth.set_pro("erin", True)
+    assert auth.is_pro("erin") is True
+    auth.set_pro("erin", False)
+    assert auth.is_pro("erin") is False
 
 
 @pytest.mark.parametrize("username,password", [

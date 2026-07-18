@@ -1,21 +1,17 @@
-"""Account storage and password checking for the web app.
+"""Account management for the web app, backed by the shared SQLite database.
 
 Passwords are never stored in plain text — only a salted hash produced by
 werkzeug's generate_password_hash. This is a learning-grade auth layer: fine
-for a demo, but the accounts file (users.json) should never be committed or
+for a demo, but the database (expenses.db) should never be committed or
 shared, and users should pick a throwaway password.
 """
 
-import json
-import os
-from pathlib import Path
+import sqlite3
+from contextlib import closing
 
 from werkzeug.security import check_password_hash, generate_password_hash
 
-# Honors EXPENSE_DATA_DIR (see storage.py) so test/preview accounts stay separate
-# from real ones.
-_BASE_DIR = Path(os.environ.get("EXPENSE_DATA_DIR") or Path(__file__).resolve().parent)
-USERS_FILE = _BASE_DIR / "users.json"
+import storage
 
 MIN_USERNAME = 3
 MIN_PASSWORD = 6
@@ -23,17 +19,6 @@ MIN_PASSWORD = 6
 
 class AuthError(ValueError):
     """Raised when registration or login input is invalid."""
-
-
-def _load_users() -> dict:
-    if not USERS_FILE.exists():
-        return {}
-    return json.loads(USERS_FILE.read_text())
-
-
-def _save_users(users: dict) -> None:
-    USERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    USERS_FILE.write_text(json.dumps(users, indent=2))
 
 
 def register(username: str, password: str) -> str:
@@ -46,39 +31,48 @@ def register(username: str, password: str) -> str:
     if len(password or "") < MIN_PASSWORD:
         raise AuthError(f"Password must be at least {MIN_PASSWORD} characters.")
 
-    users = _load_users()
-    if username in users:
-        raise AuthError("That username is already taken.")
-
-    users[username] = {"password_hash": generate_password_hash(password)}
-    _save_users(users)
+    with closing(storage.connect()) as conn, conn:
+        try:
+            conn.execute(
+                "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+                (username, generate_password_hash(password)))
+        except sqlite3.IntegrityError:
+            raise AuthError("That username is already taken.")
     return username
 
 
 def authenticate(username: str, password: str) -> str:
     """Return the canonical username if credentials are valid, else raise AuthError."""
     username = (username or "").strip().lower()
-    record = _load_users().get(username)
-    if record is None or not check_password_hash(record["password_hash"], password or ""):
+    with closing(storage.connect()) as conn:
+        row = conn.execute(
+            "SELECT password_hash FROM users WHERE username = ?", (username,)).fetchone()
+    if row is None or not check_password_hash(row["password_hash"], password or ""):
         raise AuthError("Wrong username or password.")
     return username
 
 
 def user_exists(username: str) -> bool:
-    """True if the account still exists in the accounts file."""
-    return (username or "").strip().lower() in _load_users()
+    """True if the account exists."""
+    with closing(storage.connect()) as conn:
+        row = conn.execute(
+            "SELECT 1 FROM users WHERE username = ?",
+            ((username or "").strip().lower(),)).fetchone()
+    return row is not None
 
 
 def is_pro(username: str) -> bool:
     """True if the account has the (mock) Pro subscription."""
-    record = _load_users().get((username or "").strip().lower())
-    return bool(record and record.get("pro"))
+    with closing(storage.connect()) as conn:
+        row = conn.execute(
+            "SELECT pro FROM users WHERE username = ?",
+            ((username or "").strip().lower(),)).fetchone()
+    return bool(row and row["pro"])
 
 
 def set_pro(username: str, value: bool = True) -> None:
     """Turn the (mock) Pro subscription on or off for an account."""
-    users = _load_users()
-    username = (username or "").strip().lower()
-    if username in users:
-        users[username]["pro"] = bool(value)
-        _save_users(users)
+    with closing(storage.connect()) as conn, conn:
+        conn.execute(
+            "UPDATE users SET pro = ? WHERE username = ?",
+            (int(value), (username or "").strip().lower()))

@@ -7,6 +7,8 @@ account gets its own isolated expenses and budgets.
 
 import json
 import os
+import secrets
+import sqlite3
 from calendar import month_abbr
 from datetime import datetime
 from functools import wraps
@@ -27,11 +29,14 @@ from reports import (
     total_amount,
 )
 from storage import (
+    add_expense,
+    delete_expense,
     export_csv,
+    get_expense,
     load_budgets,
     load_expenses,
-    save_budgets,
-    save_expenses,
+    set_budget,
+    update_expense,
 )
 from validation import ValidationError, parse_amount, parse_category, parse_date
 
@@ -39,6 +44,35 @@ app = Flask(__name__)
 # In production this must come from the environment; the fallback is dev-only.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-change-me-in-production")
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB cap on uploads
+
+
+# ---------- CSRF protection ----------
+
+def csrf_token() -> str:
+    """The session's CSRF token, creating it on first use."""
+    if "_csrf" not in session:
+        session["_csrf"] = secrets.token_hex(32)
+    return session["_csrf"]
+
+
+@app.context_processor
+def inject_csrf():
+    return {"csrf_token": csrf_token}
+
+
+@app.before_request
+def check_csrf():
+    """Reject any POST whose form token doesn't match the session's token."""
+    if request.method != "POST" or not app.config.get("CSRF_ENABLED", True):
+        return None
+    sent = request.form.get("_csrf", "")
+    expected = session.get("_csrf", "")
+    if not expected or not secrets.compare_digest(sent, expected):
+        return render_template(
+            "error.html",
+            title="Request blocked",
+            message="The form's security token was missing or invalid. "
+                    "Go back, refresh the page, and try again."), 400
 
 
 # ---------- auth helpers ----------
@@ -137,9 +171,16 @@ def render_dashboard(error: str | None = None):
 
 
 @app.errorhandler(json.JSONDecodeError)
+@app.errorhandler(sqlite3.Error)
 def handle_corrupt_data(err):
-    """Show a friendly page instead of a 500 when a data file is invalid JSON."""
-    return render_template("error.html", message=str(err)), 500
+    """Show a friendly page instead of a 500 when the database (or a legacy
+    JSON file being migrated) can't be read."""
+    return render_template(
+        "error.html",
+        title="Couldn't load your data",
+        message=f"The data store couldn't be read ({err}). "
+                "If this keeps happening, check expenses.db and any leftover "
+                "JSON data files, then reload."), 500
 
 
 @app.before_request
@@ -237,10 +278,7 @@ def add():
     except ValidationError as err:
         return render_dashboard(error=str(err))
 
-    user = current_user()
-    expenses = load_expenses(user)
-    expenses.append(expense)
-    save_expenses(expenses, user)
+    add_expense(expense, current_user())
     return redirect(url_for("index"))
 
 
@@ -271,8 +309,7 @@ def handle_too_large(err):
 @login_required
 def edit(expense_id):
     user = current_user()
-    expenses = load_expenses(user)
-    target = next((e for e in expenses if e.id == expense_id), None)
+    target = get_expense(expense_id, user)
     if target is None:
         return redirect(url_for("index"))
 
@@ -284,7 +321,7 @@ def edit(expense_id):
 
         for attr, value in fields.items():
             setattr(target, attr, value)
-        save_expenses(expenses, user)
+        update_expense(target, user)
         return redirect(url_for("index"))
 
     return render_template("edit.html", expense=target)
@@ -293,9 +330,7 @@ def edit(expense_id):
 @app.route("/delete/<expense_id>", methods=["POST"])
 @login_required
 def delete(expense_id):
-    user = current_user()
-    expenses = [e for e in load_expenses(user) if e.id != expense_id]
-    save_expenses(expenses, user)
+    delete_expense(expense_id, current_user())
     return redirect(url_for("index"))
 
 
@@ -335,8 +370,7 @@ def budgets():
                 "budgets.html", current_month=month,
                 budgets=budget_map, spent=spent, error=str(err))
 
-        budget_map[category] = limit
-        save_budgets(budget_map, user)
+        set_budget(category, limit, user)
         return redirect(url_for("budgets"))
 
     return render_template(

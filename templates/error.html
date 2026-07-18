@@ -1,12 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Something went wrong{% endblock %}
+{% block title %}{{ title or "Something went wrong" }}{% endblock %}
 
 {% block content %}
 <div class="panel">
-  <h2>Couldn't load your data</h2>
-  <p>One of the data files (<code>data.json</code> or <code>budgets.json</code>)
-     isn't valid JSON, so the app can't read it.</p>
-  <p class="empty">{{ message }}</p>
-  <p>Fix or delete the file, then reload the page.</p>
+  <h2>{{ title or "Something went wrong" }}</h2>
+  <p>{{ message }}</p>
 </div>
 {% endblock %}

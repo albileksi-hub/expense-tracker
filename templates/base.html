@@ -26,6 +26,7 @@
         <a href="{{ url_for('export') }}">Export CSV</a>
         <span class="nav-user">👤 {{ session.user }}{% if is_pro %} · Pro{% endif %}</span>
         <form class="inline" method="post" action="{{ url_for('logout') }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <button type="submit" class="small secondary">Log out</button>
         </form>
       {% else %}

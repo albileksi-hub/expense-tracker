@@ -17,10 +17,12 @@
       <div class="info-banner">You're already on Pro 🎉</div>
       <a href="{{ url_for('insights_view') }}"><button class="cta full">Go to Insights →</button></a>
       <form method="post" action="{{ url_for('downgrade') }}" class="pricing-cancel">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button type="submit" class="cta secondary full">Cancel Pro (demo)</button>
       </form>
     {% else %}
       <form method="post">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
         <button type="submit" class="cta full">Subscribe (demo)</button>
       </form>
     {% endif %}

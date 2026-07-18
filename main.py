@@ -1,21 +1,16 @@
 """Interactive expense tracker for the terminal, built on rich."""
 
 import json
+import sqlite3
 from datetime import datetime
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+import storage
 from expense import Expense
 from reports import filter_by_month, group_by_category, total_amount
-from storage import (
-    export_csv,
-    load_budgets,
-    load_expenses,
-    save_budgets,
-    save_expenses,
-)
 from validation import (
     ValidationError,
     parse_amount,
@@ -85,7 +80,7 @@ def find_expense(expenses: list[Expense], expense_id: str) -> Expense | None:
 
 # ---------- menu actions ----------
 
-def add_expense(expenses: list[Expense], budgets: dict[str, float]) -> None:
+def add_expense() -> None:
     console.print(Panel("Add Expense", style="bold cyan"))
     expense = Expense(
         amount=read_amount(),
@@ -93,14 +88,14 @@ def add_expense(expenses: list[Expense], budgets: dict[str, float]) -> None:
         date=read_date(),
         note=ask("Note (optional): "),
     )
-    expenses.append(expense)
-    save_expenses(expenses)
+    storage.add_expense(expense)
     console.print("[bold green]Expense added![/bold green]")
 
-    limit = budgets.get(expense.category)
+    limit = storage.load_budgets().get(expense.category)
     if limit is not None:
         month = expense.date[:7]
-        spent = group_by_category(filter_by_month(expenses, month))[expense.category]
+        expenses = filter_by_month(storage.load_expenses(), month)
+        spent = group_by_category(expenses)[expense.category]
         if spent > limit:
             console.print(
                 f"[bold red]Warning: {expense.category} is at ${spent:.2f} for {month}, "
@@ -108,8 +103,9 @@ def add_expense(expenses: list[Expense], budgets: dict[str, float]) -> None:
     console.print()
 
 
-def view_expenses(expenses: list[Expense]) -> None:
+def view_expenses() -> None:
     console.print(Panel("All Expenses", style="bold cyan"))
+    expenses = storage.load_expenses()
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
@@ -118,10 +114,10 @@ def view_expenses(expenses: list[Expense]) -> None:
     console.print(f"[bold]Total:[/bold] [green]${total_amount(expenses):.2f}[/green]\n")
 
 
-def monthly_summary(expenses: list[Expense]) -> None:
+def monthly_summary() -> None:
     console.print(Panel("Monthly Summary", style="bold cyan"))
     month = read_month()
-    matching = filter_by_month(expenses, month)
+    matching = filter_by_month(storage.load_expenses(), month)
 
     if not matching:
         console.print("[yellow]No expenses found for that month.[/yellow]\n")
@@ -141,8 +137,9 @@ def monthly_summary(expenses: list[Expense]) -> None:
     console.print()
 
 
-def edit_expense(expenses: list[Expense]) -> None:
+def edit_expense() -> None:
     console.print(Panel("Edit Expense", style="bold cyan"))
+    expenses = storage.load_expenses()
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
@@ -170,12 +167,13 @@ def edit_expense(expenses: list[Expense]) -> None:
     maybe_update("date", f"Date [{target.date}]: ", parse_date)
     maybe_update("note", f"Note [{target.note}]: ")
 
-    save_expenses(expenses)
+    storage.update_expense(target)
     console.print("[bold green]Expense updated![/bold green]\n")
 
 
-def delete_expense(expenses: list[Expense]) -> None:
+def delete_expense() -> None:
     console.print(Panel("Delete Expense", style="bold cyan"))
+    expenses = storage.load_expenses()
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
@@ -188,14 +186,13 @@ def delete_expense(expenses: list[Expense]) -> None:
 
     confirm = ask(f"Delete {target.date} | {target.category} | ${target.amount:.2f}? (y/n): ")
     if confirm.lower() == "y":
-        expenses.remove(target)
-        save_expenses(expenses)
+        storage.delete_expense(target.id)
         console.print("[bold green]Expense deleted.[/bold green]\n")
     else:
         console.print("[yellow]Cancelled.[/yellow]\n")
 
 
-def manage_budgets(expenses: list[Expense], budgets: dict[str, float]) -> None:
+def manage_budgets() -> None:
     console.print(Panel("Budgets", style="bold cyan"))
     console.print("[cyan]1.[/cyan] Set a budget")
     console.print("[cyan]2.[/cyan] View budget status")
@@ -204,16 +201,17 @@ def manage_budgets(expenses: list[Expense], budgets: dict[str, float]) -> None:
     if choice == "1":
         category = read_category("Category: ")
         limit = read_amount("Monthly budget: $")
-        budgets[category] = limit
-        save_budgets(budgets)
+        storage.set_budget(category, limit)
         console.print(f"[bold green]Budget set: {category} -> ${limit:.2f}[/bold green]\n")
     elif choice == "2":
+        budgets = storage.load_budgets()
         if not budgets:
             console.print("[yellow]No budgets set yet.[/yellow]\n")
             return
 
         current_month = datetime.now().strftime("%Y-%m")
-        spent = group_by_category(filter_by_month(expenses, current_month))
+        spent = group_by_category(
+            filter_by_month(storage.load_expenses(), current_month))
         table = Table(
             title=f"Budget status for {current_month}",
             show_header=True, header_style="bold magenta")
@@ -233,8 +231,9 @@ def manage_budgets(expenses: list[Expense], budgets: dict[str, float]) -> None:
         console.print("[red]Invalid option.[/red]\n")
 
 
-def spending_chart(expenses: list[Expense]) -> None:
+def spending_chart() -> None:
     console.print(Panel("Spending by Category", style="bold cyan"))
+    expenses = storage.load_expenses()
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
@@ -249,13 +248,14 @@ def spending_chart(expenses: list[Expense]) -> None:
     console.print()
 
 
-def export_to_csv(expenses: list[Expense]) -> None:
+def export_to_csv() -> None:
     console.print(Panel("Export to CSV", style="bold cyan"))
+    expenses = storage.load_expenses()
     if not expenses:
         console.print("[yellow]No expenses recorded yet.[/yellow]\n")
         return
 
-    path = export_csv(expenses)
+    path = storage.export_csv(expenses)
     console.print(f"[bold green]Exported to {path.name}[/bold green]\n")
 
 
@@ -263,23 +263,20 @@ def export_to_csv(expenses: list[Expense]) -> None:
 
 def main() -> None:
     try:
-        expenses = load_expenses()
-        budgets = load_budgets()
-    except json.JSONDecodeError as err:
-        console.print(
-            "[bold red]Could not read saved data — "
-            f"data.json or budgets.json is not valid JSON ({err}).[/bold red]")
+        storage.load_expenses()  # opens the DB, running first-time migration
+    except (json.JSONDecodeError, sqlite3.Error) as err:
+        console.print(f"[bold red]Could not open the expense database: {err}[/bold red]")
         return
 
     actions = {
-        "1": ("Add expense", lambda: add_expense(expenses, budgets)),
-        "2": ("View all expenses", lambda: view_expenses(expenses)),
-        "3": ("Monthly summary", lambda: monthly_summary(expenses)),
-        "4": ("Edit expense", lambda: edit_expense(expenses)),
-        "5": ("Delete expense", lambda: delete_expense(expenses)),
-        "6": ("Budgets", lambda: manage_budgets(expenses, budgets)),
-        "7": ("Spending chart", lambda: spending_chart(expenses)),
-        "8": ("Export to CSV", lambda: export_to_csv(expenses)),
+        "1": ("Add expense", add_expense),
+        "2": ("View all expenses", view_expenses),
+        "3": ("Monthly summary", monthly_summary),
+        "4": ("Edit expense", edit_expense),
+        "5": ("Delete expense", delete_expense),
+        "6": ("Budgets", manage_budgets),
+        "7": ("Spending chart", spending_chart),
+        "8": ("Export to CSV", export_to_csv),
     }
     exit_key = "9"
 

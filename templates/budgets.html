@@ -6,6 +6,7 @@
 <div class="panel">
   <h2>Set a monthly budget</h2>
   <form method="post" class="form-grid" style="grid-template-columns: 1fr 1fr auto;">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <div>
       <label>Category</label>
       <input type="text" name="category" placeholder="food, rent, transport…" required>

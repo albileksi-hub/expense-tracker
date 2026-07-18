@@ -2,9 +2,11 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# All expense data is private and never committed.
+# All expense/account data is private and never committed.
+expenses.db
+*.db
+*.csv
 data.json
 budgets.json
-expenses.csv
 users.json
 user_data/

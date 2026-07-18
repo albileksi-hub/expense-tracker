@@ -2,7 +2,7 @@
 
 An expense tracker written in Python, available both as a terminal app (built on
 [rich](https://github.com/Textualize/rich)) and as a web app (built on Flask).
-Both share the same data file, so you can use either interchangeably.
+Both share the same SQLite database, so you can use either interchangeably.
 
 ## Features
 
@@ -19,17 +19,21 @@ Both share the same data file, so you can use either interchangeably.
 - Category budgets with over-budget warnings
 - Spending bar chart
 - Export to CSV
-- Data persisted as JSON — human-readable and diff-friendly
+- Data persisted in **SQLite** (Python's stdlib `sqlite3`, no extra dependency);
+  legacy JSON data files are migrated automatically on first run
+- **CSRF protection** on every form — cross-site request forgeries are rejected
+  with a 400 before they can touch your data
 - Validated input: bad amounts and impossible dates are rejected, not crashed on
 
-## A note on the login system
+## Security notes
 
 Passwords are hashed with `werkzeug.security` (scrypt) and never stored in plain
-text. This is a **learning-grade** auth layer, though: the accounts file
-(`users.json`) and per-account data (`user_data/`) are git-ignored so they're
-never committed, and you should use a throwaway password. In production the Flask
-`SECRET_KEY` would come from the environment (`SECRET_KEY=... python3 app.py`)
-rather than the built-in dev fallback.
+text, every POST is CSRF-checked against a per-session token, and the database
+(`expenses.db`) is git-ignored so no user data is ever committed. This is still a
+**learning-grade** deployment though: use a throwaway password, and in production
+the Flask `SECRET_KEY` would come from the environment
+(`SECRET_KEY=... python3 app.py`) rather than the built-in dev fallback, served
+behind HTTPS with a real WSGI server.
 
 ## Getting started
 
@@ -90,9 +94,9 @@ python3 -m pytest -v
 | `templates/`, `static/` | HTML templates and CSS for the web version |
 | `expense.py` | The `Expense` dataclass and its JSON (de)serialization |
 | `reports.py` | Pure calculation functions (filtering, totals, budget checks) |
-| `storage.py` | Persistence: per-account JSON save/load and CSV export |
+| `storage.py` | SQLite persistence (expenses, budgets, accounts) with JSON migration, plus CSV export |
 | `validation.py` | Input rules (amount, date, category) shared by both front ends |
-| `auth.py` | Account registration and password hashing (web app) |
+| `auth.py` | Account registration and password hashing, backed by the shared database |
 | `receipt.py` | Receipt scanning via Claude vision, with a manual fallback |
 | `insights.py` | Local spending analysis + an optional Claude opinion (Pro) |
 | `test_*.py` | Unit tests for validation, storage, reports, auth, receipts, insights, and the web routes |

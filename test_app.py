@@ -21,24 +21,45 @@ def _image_upload():
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    """A logged-in Flask test client backed by throwaway data + accounts files."""
-    monkeypatch.setattr(storage, "_BASE_DIR", tmp_path)
-    monkeypatch.setattr(auth, "USERS_FILE", tmp_path / "users.json")
-    app.config.update(TESTING=True, SECRET_KEY="test-key")
+def anon_client(tmp_path, monkeypatch):
+    """A logged-out client backed by a throwaway database.
 
-    client = app.test_client()
-    client.post("/register", data={"username": "tester", "password": "secret123"})
-    return client
+    CSRF is disabled so tests can POST directly; test_csrf_protection
+    re-enables it to exercise the check itself.
+    """
+    monkeypatch.setattr(storage, "_BASE_DIR", tmp_path)
+    app.config.update(TESTING=True, SECRET_KEY="test-key", CSRF_ENABLED=False)
+    return app.test_client()
 
 
 @pytest.fixture
-def anon_client(tmp_path, monkeypatch):
-    """A logged-out client."""
+def client(anon_client):
+    """A logged-in Flask test client."""
+    anon_client.post("/register", data={"username": "tester", "password": "secret123"})
+    return anon_client
+
+
+# ---------- CSRF ----------
+
+def test_csrf_protection(tmp_path, monkeypatch):
     monkeypatch.setattr(storage, "_BASE_DIR", tmp_path)
-    monkeypatch.setattr(auth, "USERS_FILE", tmp_path / "users.json")
-    app.config.update(TESTING=True, SECRET_KEY="test-key")
-    return app.test_client()
+    app.config.update(TESTING=True, SECRET_KEY="test-key", CSRF_ENABLED=True)
+    try:
+        c = app.test_client()
+        # a POST without the token is rejected and creates nothing
+        resp = c.post("/register", data={"username": "eve", "password": "secret123"})
+        assert resp.status_code == 400
+        assert not auth.user_exists("eve")
+
+        # with the token from the rendered form, the same POST succeeds
+        page = c.get("/register").data.decode()
+        token = page.split('name="_csrf" value="')[1].split('"')[0]
+        resp = c.post("/register", data={
+            "username": "eve", "password": "secret123", "_csrf": token})
+        assert resp.status_code == 302
+        assert auth.user_exists("eve")
+    finally:
+        app.config["CSRF_ENABLED"] = False
 
 
 # ---------- auth ----------
@@ -137,11 +158,14 @@ def test_scan_without_a_file_is_handled(client):
     assert b"choose a receipt image" in resp.data
 
 
-def test_stale_session_is_cleared_when_account_gone(client, tmp_path):
+def test_stale_session_is_cleared_when_account_gone(client):
+    from contextlib import closing
+
     # the account exists and is logged in
     assert client.get("/dashboard").status_code == 200
-    # simulate the accounts file being wiped out from under the session
-    (tmp_path / "users.json").unlink()
+    # simulate the account being deleted out from under the session
+    with closing(storage.connect()) as conn, conn:
+        conn.execute("DELETE FROM users WHERE username = 'tester'")
     # next request should log them out cleanly, not silently misbehave
     resp = client.get("/dashboard")
     assert resp.status_code == 302
