@@ -422,4 +422,6 @@ def insights_view():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5050)
+    # The Werkzeug debugger is a code-execution risk if ever exposed, so debug
+    # mode is opt-in: FLASK_DEBUG=1 python app.py
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1", port=5050)

@@ -1,5 +1,8 @@
 # Expense Tracker
 
+[![tests](https://github.com/albileksi-hub/expense-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/albileksi-hub/expense-tracker/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 An expense tracker written in Python, available both as a terminal app (built on
 [rich](https://github.com/Textualize/rich)) and as a web app (built on Flask).
 Both share the same SQLite database, so you can use either interchangeably.
@@ -43,6 +46,10 @@ pip install -r requirements.txt
 python3 main.py   # terminal version
 python3 app.py    # web version, then open http://localhost:5050
 ```
+
+For development with auto-reload and the debugger, opt in explicitly:
+`FLASK_DEBUG=1 python3 app.py` (debug mode is off by default — the Werkzeug
+debugger must never run on anything reachable from outside).
 
 ## Receipt scanning (optional)
 
